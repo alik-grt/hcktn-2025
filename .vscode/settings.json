@@ -1,0 +1,40 @@
+{
+  "sqltools.connections": [
+    {
+      "mysqlOptions": {
+        "authProtocol": "default",
+        "enableSsl": "Disabled"
+      },
+      "previewLimit": 50,
+      "server": "vps941.dcs.gurtam.net",
+      "port": 3306,
+      "driver": "MySQL",
+      "name": "mysql  forum.gurtam",
+      "database": "mysql",
+      "username": "root",
+      "password": "admin"
+    },
+    {
+      "previewLimit": 50,
+      "server": "localhost",
+      "port": 5433,
+      "driver": "PostgreSQL",
+      "name": "",
+      "database": "",
+      "username": "postgres",
+      "password": "postgres",
+      "connectionTimeout": 30
+    },
+    {
+      "ssh": "Disabled",
+      "previewLimit": 50,
+      "server": "localhost",
+      "port": 5432,
+      "driver": "PostgreSQL",
+      "name": "hackaton",
+      "database": "hackaton",
+      "username": "postgres",
+      "password": "postgres"
+    }
+  ]
+}
