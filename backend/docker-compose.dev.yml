@@ -11,11 +11,12 @@ services:
       - '9229:9229'
     environment:
       NODE_ENV: development
-      DATABASE_PATH: ${DATABASE_PATH:-/usr/src/app/database.sqlite}
+      DATABASE_PATH: ${DATABASE_PATH:-/usr/src/app/data/database.sqlite}
+      CHOKIDAR_USEPOLLING: 'true'
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
-      - database_data_dev:/usr/src/app
+      - database_data_dev:/usr/src/app/data
     command: npm run start:debug
     networks:
       - hackaton-backend-network-dev
