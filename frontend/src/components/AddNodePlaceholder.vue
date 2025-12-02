@@ -42,4 +42,3 @@ const onClick = () => {
   line-height: 1;
 }
 </style>
-

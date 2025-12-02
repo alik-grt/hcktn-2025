@@ -26,7 +26,7 @@ import { TriggersModule } from './triggers/triggers.module';
         database: configService.get<string>('DATABASE_NAME', 'hackaton'),
         entities: [process.cwd() + '/dist/**/*.entity{.ts,.js}'],
         synchronize: configService.get<string>('NODE_ENV') !== 'production',
-        logging: configService.get<string>('NODE_ENV') === 'development',
+        logging: false,
       }),
       inject: [ConfigService],
     }),

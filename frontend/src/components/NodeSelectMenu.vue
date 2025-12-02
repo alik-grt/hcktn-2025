@@ -133,4 +133,3 @@ const close = () => {
   justify-content: center;
 }
 </style>
-

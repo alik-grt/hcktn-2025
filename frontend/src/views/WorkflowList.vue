@@ -1,59 +1,92 @@
 <template>
-  <div class="workflow-list">
-    <div class="header">
-      <h1>Workflows</h1>
-      <button @click="createWorkflow" class="btn-primary">Create Workflow</button>
-    </div>
-    <div v-if="loading" class="loading">Loading...</div>
-    <div v-else-if="workflows.length === 0" class="empty">No workflows found</div>
-    <div v-else class="workflow-grid">
-      <div
-        v-for="workflow in workflows"
-        :key="workflow.id"
-        class="workflow-card"
-        @click="openWorkflow(workflow.id)"
-      >
-        <div class="workflow-card-header">
-          <h3>{{ workflow.name }}</h3>
-          <button
-            class="delete-button"
-            @click.stop="handleDelete(workflow.id, workflow.name)"
-            :disabled="deleting === workflow.id"
-            title="Delete workflow"
+  <AppLayout>
+    <div class="mx-auto max-w-7xl">
+      <div class="flex flex-wrap items-center justify-between gap-4">
+        <div class="flex flex-col gap-1">
+          <h1
+            class="text-text-light-primary dark:text-text-dark-primary text-3xl font-bold leading-tight tracking-tight"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="16"
-              height="16"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              stroke-width="2"
-              stroke-linecap="round"
-              stroke-linejoin="round"
-            >
-              <polyline points="3 6 5 6 21 6"></polyline>
-              <path
-                d="m19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"
-              ></path>
-              <line x1="10" y1="11" x2="10" y2="17"></line>
-              <line x1="14" y1="11" x2="14" y2="17"></line>
-            </svg>
-          </button>
+            Workflows
+          </h1>
+          <p
+            class="text-text-light-secondary dark:text-text-dark-secondary text-base font-normal leading-normal"
+          >
+            Manage your automation workflows.
+          </p>
         </div>
-        <p v-if="workflow.description">{{ workflow.description }}</p>
-        <div class="workflow-meta">
-          <span class="status" :class="workflow.status">{{ workflow.status }}</span>
-          <span class="nodes-count">{{ workflow.nodes?.length || 0 }} nodes</span>
+        <button
+          @click="createWorkflow"
+          class="flex min-w-[84px] cursor-pointer items-center justify-center gap-2 overflow-hidden rounded-lg h-11 px-5 bg-primary text-white text-sm font-bold leading-normal tracking-[0.015em] shadow-sm hover:bg-primary/90"
+        >
+          <span class="material-symbols-outlined">add</span>
+          <span class="truncate">Create New Workflow</span>
+        </button>
+      </div>
+      <div class="mt-8">
+        <div
+          v-if="loading"
+          class="p-8 text-center text-text-light-secondary dark:text-text-dark-secondary"
+        >
+          Loading...
+        </div>
+        <div
+          v-else-if="workflows.length === 0"
+          class="p-8 text-center text-text-light-secondary dark:text-text-dark-secondary"
+        >
+          No workflows found
+        </div>
+        <div v-else class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+          <div
+            v-for="workflow in workflows"
+            :key="workflow.id"
+            class="rounded-lg p-6 bg-card-light dark:bg-card-dark border border-border-light dark:border-border-dark shadow-sm cursor-pointer transition-all hover:shadow-md hover:-translate-y-0.5"
+            @click="openWorkflow(workflow.id)"
+          >
+            <div class="flex justify-between items-start mb-2">
+              <h3 class="text-text-light-primary dark:text-text-dark-primary font-semibold text-lg">
+                {{ workflow.name }}
+              </h3>
+              <button
+                class="p-1.5 rounded hover:bg-error/10 text-error transition-colors"
+                @click.stop="handleDelete(workflow.id, workflow.name)"
+                :disabled="deleting === workflow.id"
+                title="Delete workflow"
+              >
+                <span class="material-symbols-outlined text-lg">delete</span>
+              </button>
+            </div>
+            <p
+              v-if="workflow.description"
+              class="text-text-light-secondary dark:text-text-dark-secondary text-sm mb-4"
+            >
+              {{ workflow.description }}
+            </p>
+            <div class="flex justify-between items-center">
+              <span
+                :class="[
+                  'px-2 py-1 rounded-full text-xs font-medium',
+                  workflow.status === 'active'
+                    ? 'bg-success/10 text-success'
+                    : 'bg-gray-100 dark:bg-gray-700 text-text-light-secondary dark:text-text-dark-secondary',
+                ]"
+              >
+                {{ workflow.status }}
+              </span>
+              <span class="text-text-light-secondary dark:text-text-dark-secondary text-sm">
+                {{ workflow.nodes?.length || 0 }} nodes
+              </span>
+            </div>
+          </div>
         </div>
       </div>
     </div>
-  </div>
+  </AppLayout>
 </template>
 
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useRouter } from 'vue-router';
+import AppLayout from '../components/AppLayout.vue';
 import { workflowsApi, type Workflow } from '../api/workflows';
 
 const router = useRouter();
@@ -85,7 +118,9 @@ const handleDelete = async (id: string, name: string) => {
     return;
   }
 
-  if (!confirm(`Are you sure you want to delete workflow "${name}"? This action cannot be undone.`)) {
+  if (
+    !confirm(`Are you sure you want to delete workflow "${name}"? This action cannot be undone.`)
+  ) {
     return;
   }
 
@@ -106,134 +141,4 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
-.workflow-list {
-  padding: 2rem;
-  max-width: 1200px;
-  margin: 0 auto;
-}
-
-.header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 2rem;
-}
-
-.header h1 {
-  font-size: 2rem;
-  font-weight: 600;
-}
-
-.btn-primary {
-  padding: 0.75rem 1.5rem;
-  background: #007bff;
-  color: white;
-  border: none;
-  border-radius: 0.5rem;
-  cursor: pointer;
-  font-size: 1rem;
-  font-weight: 500;
-}
-
-.btn-primary:hover {
-  background: #0056b3;
-}
-
-.loading,
-.empty {
-  text-align: center;
-  padding: 3rem;
-  color: #666;
-}
-
-.workflow-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 1.5rem;
-}
-
-.workflow-card {
-  background: white;
-  border: 1px solid #e0e0e0;
-  border-radius: 0.5rem;
-  padding: 1.5rem;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.workflow-card:hover {
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  transform: translateY(-2px);
-}
-
-.workflow-card-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  margin-bottom: 0.5rem;
-}
-
-.workflow-card-header h3 {
-  margin: 0;
-  color: #333;
-  flex: 1;
-}
-
-.delete-button {
-  padding: 0.375rem;
-  background: transparent;
-  border: none;
-  border-radius: 0.25rem;
-  cursor: pointer;
-  color: #dc3545;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  flex-shrink: 0;
-}
-
-.delete-button:hover:not(:disabled) {
-  background: #fee;
-  color: #c82333;
-}
-
-.delete-button:disabled {
-  opacity: 0.6;
-  cursor: not-allowed;
-}
-
-.workflow-card p {
-  color: #666;
-  margin-bottom: 1rem;
-  font-size: 0.9rem;
-}
-
-.workflow-meta {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 0.85rem;
-}
-
-.status {
-  padding: 0.25rem 0.75rem;
-  border-radius: 1rem;
-  font-weight: 500;
-}
-
-.status.active {
-  background: #d4edda;
-  color: #155724;
-}
-
-.status.inactive {
-  background: #f8d7da;
-  color: #721c24;
-}
-
-.nodes-count {
-  color: #666;
-}
-</style>
+<style scoped></style>

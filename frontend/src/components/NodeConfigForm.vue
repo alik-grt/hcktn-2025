@@ -1,96 +1,235 @@
 <template>
-  <div class="node-config-form">
-    <div v-if="node.type === 'trigger'" class="form-group">
-      <label>Subtype</label>
-      <select v-model="localNode.subtype" @change="handleSubtypeChange">
+  <div class="flex flex-col gap-4">
+    <div v-if="node.type === 'trigger'" class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-text-light-primary dark:text-text-dark-primary"
+        >Subtype</label
+      >
+      <select
+        v-model="localNode.subtype"
+        @change="handleSubtypeChange"
+        class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+      >
         <option value="manual">Manual</option>
         <option value="webhook">Webhook</option>
         <option value="cron">Cron</option>
       </select>
     </div>
-    <div v-if="node.type === 'trigger' && node.subtype === 'webhook'" class="form-group">
-      <label>Webhook URL</label>
-      <div v-if="webhookUrl" class="webhook-url-display">
-        <input :value="webhookUrl" readonly class="readonly-input" />
-        <button @click="copyWebhookUrl" class="btn-copy">Copy</button>
+    <div v-if="node.type === 'trigger' && node.subtype === 'webhook'" class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-text-light-primary dark:text-text-dark-primary"
+        >Webhook URL</label
+      >
+      <div v-if="webhookUrl" class="flex gap-2">
+        <input
+          :value="webhookUrl"
+          readonly
+          class="flex-1 px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-gray-50 dark:bg-gray-800 text-sm font-mono text-text-light-secondary dark:text-text-dark-secondary"
+        />
+        <button
+          @click="copyWebhookUrl"
+          class="px-4 py-2 rounded-lg bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200 hover:bg-blue-200 dark:hover:bg-blue-800 text-sm font-medium transition-colors"
+        >
+          Copy
+        </button>
       </div>
-      <div v-else class="webhook-info">Save the node to generate webhook URL</div>
+      <div
+        v-else
+        class="px-3 py-2 bg-yellow-50 dark:bg-yellow-900/30 border border-yellow-200 dark:border-yellow-800 rounded-lg text-yellow-800 dark:text-yellow-200 text-sm"
+      >
+        Save the node to generate webhook URL
+      </div>
     </div>
-    <div v-if="node.type === 'trigger' && node.subtype === 'cron'" class="form-group">
-      <label>Cron Expression</label>
+    <div v-if="node.type === 'trigger' && node.subtype === 'cron'" class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-text-light-primary dark:text-text-dark-primary"
+        >Cron Expression</label
+      >
       <input
         v-model="cronExpression"
-        @input="handleCronChange"
         type="text"
-        placeholder="0 * * * * (every hour)"
+        placeholder="0 0 * * * * (every hour)"
+        class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
       />
-      <small class="form-hint">
-        Format: minute hour day month dayOfWeek
+      <div class="flex flex-col gap-2">
+        <div class="text-xs font-medium text-text-light-secondary dark:text-text-dark-secondary">
+          Quick Actions:
+        </div>
+        <div class="flex flex-wrap gap-2">
+          <button
+            type="button"
+            @click="setCronExpression('*/1 * * * * *')"
+            class="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 text-xs font-medium transition-colors"
+          >
+            1s
+          </button>
+          <button
+            type="button"
+            @click="setCronExpression('*/5 * * * * *')"
+            class="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 text-xs font-medium transition-colors"
+          >
+            5s
+          </button>
+          <button
+            type="button"
+            @click="setCronExpression('0 * * * * *')"
+            class="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 text-xs font-medium transition-colors"
+          >
+            1 min
+          </button>
+          <button
+            type="button"
+            @click="setCronExpression('0 0 * * * *')"
+            class="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 text-xs font-medium transition-colors"
+          >
+            1h
+          </button>
+          <button
+            type="button"
+            @click="setCronExpression('0 0 0 * * *')"
+            class="px-3 py-1.5 rounded-lg bg-gray-100 dark:bg-gray-800 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-700 text-xs font-medium transition-colors"
+          >
+            1d
+          </button>
+        </div>
+      </div>
+      <div class="flex gap-2">
+        <button
+          type="button"
+          class="flex-1 px-4 py-2 rounded-lg bg-green-500 dark:bg-green-600 text-white hover:bg-green-600 dark:hover:bg-green-700 text-sm font-medium transition-colors"
+          @click="handleCronSave"
+        >
+          Save
+        </button>
+        <button
+          type="button"
+          class="flex-1 px-4 py-2 rounded-lg bg-red-500 dark:bg-red-600 text-white hover:bg-red-600 dark:hover:bg-red-700 text-sm font-medium transition-colors"
+          @click="handleCronDelete"
+        >
+          Delete
+        </button>
+      </div>
+      <small
+        class="text-xs text-text-light-secondary dark:text-text-dark-secondary leading-relaxed"
+      >
+        Format: second minute hour day month dayOfWeek
         <br />
-        Examples: "0 * * * *" (every hour), "0 0 * * *" (daily), "*/5 * * * *" (every 5 minutes)
+        Examples: "0 0 * * * *" (every hour), "0 0 0 * * *" (daily), "*/5 * * * * *" (every 5
+        seconds)
       </small>
     </div>
-    <div v-if="node.type === 'http'" class="form-group">
-      <label>Method</label>
-      <select v-model="localNode.method" @change="handleUpdate">
+    <div v-if="node.type === 'http'" class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-text-light-primary dark:text-text-dark-primary"
+        >Method</label
+      >
+      <select
+        v-model="localNode.method"
+        @change="handleUpdate"
+        class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+      >
         <option value="GET">GET</option>
         <option value="POST">POST</option>
         <option value="PUT">PUT</option>
         <option value="DELETE">DELETE</option>
       </select>
     </div>
-    <div v-if="node.type === 'http'" class="form-group">
-      <label>URL</label>
-      <input v-model="localNode.url" @input="handleUpdate" type="text" />
+    <div v-if="node.type === 'http'" class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-text-light-primary dark:text-text-dark-primary"
+        >URL</label
+      >
+      <input
+        v-model="localNode.url"
+        @input="handleUpdate"
+        type="text"
+        class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+      />
     </div>
-    <div v-if="node.type === 'http'" class="form-group">
-      <label>Body Template</label>
-      <textarea v-model="localNode.bodyTemplate" @input="handleUpdate" rows="4"></textarea>
+    <div v-if="node.type === 'http'" class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-text-light-primary dark:text-text-dark-primary"
+        >Body Template</label
+      >
+      <textarea
+        v-model="localNode.bodyTemplate"
+        @input="handleUpdate"
+        rows="4"
+        class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary/50"
+      ></textarea>
     </div>
-    <div v-if="node.type === 'transform'" class="form-group">
-      <label>Template (JSON)</label>
+    <div v-if="node.type === 'transform'" class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-text-light-primary dark:text-text-dark-primary"
+        >Template (JSON)</label
+      >
       <textarea
         v-model="templateJson"
         @input="handleTemplateChange"
         rows="6"
         placeholder='{"username": "{{name}}", "isAdult": "{{age > 18}}"}'
+        class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary/50"
       ></textarea>
     </div>
-    <div v-if="node.type === 'agent'" class="form-group">
-      <label>Config (JSON)</label>
+    <div v-if="node.type === 'agent'" class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-text-light-primary dark:text-text-dark-primary"
+        >Name</label
+      >
+      <input
+        v-model="localNode.name"
+        @input="handleUpdate"
+        type="text"
+        placeholder="Agent name"
+        class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+      />
+    </div>
+    <div v-if="node.type === 'agent'" class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-text-light-primary dark:text-text-dark-primary"
+        >Config (JSON)</label
+      >
       <textarea
         v-model="configJson"
         @input="handleConfigChange"
         rows="6"
         placeholder='{"model": "gpt-4", "temperature": 0.7}'
+        class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary/50"
       ></textarea>
     </div>
-    <div v-if="node.type === 'delay'" class="form-group">
-      <label>Delay Type</label>
-      <select v-model="delayType" @change="handleDelayTypeChange">
+    <div v-if="node.type === 'delay'" class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-text-light-primary dark:text-text-dark-primary"
+        >Delay Type</label
+      >
+      <select
+        v-model="delayType"
+        @change="handleDelayTypeChange"
+        class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+      >
         <option value="ms">Delay (milliseconds)</option>
         <option value="until">Wait until date/time</option>
       </select>
     </div>
-    <div v-if="node.type === 'delay' && delayType === 'ms'" class="form-group">
-      <label>Delay (milliseconds)</label>
+    <div v-if="node.type === 'delay' && delayType === 'ms'" class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-text-light-primary dark:text-text-dark-primary"
+        >Delay (milliseconds)</label
+      >
       <input
         v-model.number="delayMs"
         @input="handleDelayMsChange"
         type="number"
         min="0"
         placeholder="1000"
+        class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
       />
-      <small class="form-hint">Delay execution for specified milliseconds</small>
+      <small class="text-xs text-text-light-secondary dark:text-text-dark-secondary"
+        >Delay execution for specified milliseconds</small
+      >
     </div>
-    <div v-if="node.type === 'delay' && delayType === 'until'" class="form-group">
-      <label>Wait Until (date/time)</label>
+    <div v-if="node.type === 'delay' && delayType === 'until'" class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-text-light-primary dark:text-text-dark-primary"
+        >Wait Until (date/time)</label
+      >
       <input
         v-model="delayUntil"
         @input="handleDelayUntilChange"
         type="datetime-local"
+        class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
       />
-      <small class="form-hint">Wait until the specified date and time</small>
+      <small class="text-xs text-text-light-secondary dark:text-text-dark-secondary"
+        >Wait until the specified date and time</small
+      >
     </div>
   </div>
 </template>
@@ -115,13 +254,9 @@ const cronExpression = ref(props.node.config?.cronExpression || '');
 const webhookUrl = ref<string | null>(null);
 const delayMs = ref<number>(props.node.config?.delayMs || 0);
 const delayUntil = ref<string>(
-  props.node.config?.until
-    ? new Date(props.node.config.until).toISOString().slice(0, 16)
-    : '',
+  props.node.config?.until ? new Date(props.node.config.until).toISOString().slice(0, 16) : '',
 );
-const delayType = ref<'ms' | 'until'>(
-  props.node.config?.until ? 'until' : 'ms',
-);
+const delayType = ref<'ms' | 'until'>(props.node.config?.until ? 'until' : 'ms');
 
 watch(
   () => props.node,
@@ -158,12 +293,49 @@ const handleSubtypeChange = () => {
   handleUpdate();
 };
 
-const handleCronChange = () => {
+const handleCronSave = async () => {
   if (!localNode.value.config) {
     localNode.value.config = {};
   }
-  localNode.value.config.cronExpression = cronExpression.value;
+  const expression = cronExpression.value.trim();
+  if (!expression) {
+    delete localNode.value.config.cronExpression;
+    localNode.value.config.cronActive = false;
+    handleUpdate();
+    return;
+  }
+  localNode.value.config.cronExpression = expression;
   handleUpdate();
+  if (props.node.id && localNode.value.subtype === 'cron') {
+    try {
+      await workflowsApi.startCron(props.node.id);
+      localNode.value.config.cronActive = true;
+      handleUpdate();
+    } catch (error) {
+      console.error('Failed to start cron job:', error);
+    }
+  }
+};
+
+const handleCronDelete = async () => {
+  cronExpression.value = '';
+  if (!localNode.value.config) {
+    localNode.value.config = {};
+  }
+  delete localNode.value.config.cronExpression;
+  localNode.value.config.cronActive = false;
+  if (props.node.id && localNode.value.subtype === 'cron') {
+    try {
+      await workflowsApi.stopCron(props.node.id);
+    } catch (error) {
+      console.error('Failed to stop cron job:', error);
+    }
+  }
+  handleUpdate();
+};
+
+const setCronExpression = (expression: string) => {
+  cronExpression.value = expression;
 };
 
 const loadWebhookUrl = async () => {
@@ -249,82 +421,4 @@ onMounted(() => {
 });
 </script>
 
-<style scoped>
-.node-config-form {
-  display: flex;
-  flex-direction: column;
-  gap: 1rem;
-}
-
-.form-group {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.form-group label {
-  font-size: 0.85rem;
-  font-weight: 500;
-  color: #333;
-}
-
-.form-group input,
-.form-group select,
-.form-group textarea {
-  padding: 0.5rem;
-  border: 1px solid #ccc;
-  border-radius: 0.25rem;
-  font-size: 0.9rem;
-}
-
-.form-group textarea {
-  font-family: monospace;
-  resize: vertical;
-}
-
-.webhook-url-display {
-  display: flex;
-  gap: 0.5rem;
-}
-
-.readonly-input {
-  flex: 1;
-  padding: 0.5rem;
-  border: 1px solid #ccc;
-  border-radius: 0.25rem;
-  background: #f5f5f5;
-  font-size: 0.85rem;
-  font-family: monospace;
-}
-
-.btn-copy {
-  padding: 0.5rem 1rem;
-  background: #007bff;
-  color: white;
-  border: none;
-  border-radius: 0.25rem;
-  cursor: pointer;
-  font-size: 0.85rem;
-}
-
-.btn-copy:hover {
-  background: #0056b3;
-}
-
-.webhook-info {
-  padding: 0.5rem;
-  background: #fff3cd;
-  border: 1px solid #ffc107;
-  border-radius: 0.25rem;
-  color: #856404;
-  font-size: 0.85rem;
-}
-
-.form-hint {
-  display: block;
-  margin-top: 0.25rem;
-  font-size: 0.75rem;
-  color: #666;
-  line-height: 1.4;
-}
-</style>
+<style scoped></style>

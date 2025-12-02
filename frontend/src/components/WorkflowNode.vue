@@ -1,68 +1,122 @@
 <template>
-  <div class="workflow-node" :class="getNodeStatusClass()">
-    <div class="node-header">
-      <span class="node-type-badge" :class="data.type">{{ getNodeTypeLabel() }}</span>
-      <div class="node-status-indicator">
-        <div v-if="getNodeStatus() === 'progress'" class="loading-icon" title="Processing...">
-          <svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <path
-              d="M 8 1 A 7 7 0 0 1 15 8"
-              stroke="currentColor"
-              stroke-width="2"
-              fill="none"
-              class="loading-path-1"
-            />
-            <path
-              d="M 8 15 A 7 7 0 0 1 1 8"
-              stroke="currentColor"
-              stroke-width="2"
-              fill="none"
-              class="loading-path-2"
-            />
-          </svg>
-        </div>
-        <button @click.stop="onDelete" class="node-delete" type="button">×</button>
+  <div :class="['workflow-node flex flex-col rounded-lg border shadow-md', getNodeStatusClass()]">
+    <div class="flex items-center gap-3 p-4 border-b border-border-light dark:border-border-dark">
+      <div :class="getIconContainerClass()">
+        <span
+          v-if="getNodeStatus() === 'progress'"
+          class="material-symbols-outlined animate-spin text-info"
+        >
+          sync
+        </span>
+        <span
+          v-else-if="getNodeStatus() === 'passed'"
+          class="material-symbols-outlined text-success"
+        >
+          check_circle
+        </span>
+        <span v-else :class="getIconClass()">{{ getIcon() }}</span>
       </div>
-    </div>
-    <div class="node-content">
-      <div v-if="data.type === 'trigger'">{{ data.subtype || 'manual' }}</div>
-      <div v-else-if="data.type === 'http'">{{ data.method || 'GET' }} {{ data.url }}</div>
-      <div v-else-if="data.type === 'transform'">Transform</div>
-      <div v-else-if="data.type === 'agent'">Agent</div>
-      <div v-else-if="data.type === 'delay'">
-        <div v-if="data.config?.delayMs">{{ data.config.delayMs }}ms</div>
-        <div v-else-if="data.config?.until">{{ new Date(data.config.until).toLocaleString() }}</div>
-        <div v-else>Delay</div>
+      <div class="flex-1">
+        <h3 class="font-semibold text-text-light-primary dark:text-text-dark-primary">
+          {{ getNodeTitle() }}
+        </h3>
+        <p class="text-xs text-text-light-secondary dark:text-text-dark-secondary">
+          {{ getNodeSubtitle() }}
+        </p>
       </div>
-    </div>
-    <div v-if="data.type === 'trigger' && (data.subtype === 'manual' || !data.subtype)" class="node-actions">
-      <button @click.stop="onRun" class="btn-play" type="button" title="Run workflow">
-        ▶
+      <button
+        @click.stop="onDelete"
+        class="p-1 rounded hover:bg-gray-100 dark:hover:bg-gray-700 text-text-light-secondary dark:text-text-dark-secondary"
+        type="button"
+        title="Delete node"
+      >
+        <span class="material-symbols-outlined text-base">close</span>
       </button>
+    </div>
+    <div class="p-4 text-sm text-text-light-secondary dark:text-text-dark-secondary">
+      <p>{{ getNodeContent() }}</p>
+    </div>
+    <div
+      v-if="
+        data.type === 'trigger' &&
+        (data.subtype === 'manual' || data.subtype === 'cron' || !data.subtype)
+      "
+      class="px-4 pb-4"
+    >
+      <button
+        v-if="data.subtype === 'cron' && isCronActive"
+        @click.stop="onPause"
+        class="w-full flex items-center justify-center gap-2 rounded-lg bg-yellow-100 dark:bg-yellow-900 px-4 py-2 text-sm font-medium text-yellow-800 dark:text-yellow-200 hover:bg-yellow-200 dark:hover:bg-yellow-800"
+        type="button"
+        title="Stop cron"
+      >
+        <span class="material-symbols-outlined text-base">pause</span>
+        Pause
+      </button>
+      <button
+        v-else
+        @click.stop="onRun"
+        class="w-full flex items-center justify-center gap-2 rounded-lg bg-green-100 dark:bg-green-900 px-4 py-2 text-sm font-medium text-green-800 dark:text-green-200 hover:bg-green-200 dark:hover:bg-green-800"
+        type="button"
+        :title="data.subtype === 'cron' ? 'Start cron' : 'Run workflow'"
+      >
+        <span class="material-symbols-outlined text-base">play_arrow</span>
+        {{ data.subtype === 'cron' ? 'Start' : 'Run' }}
+      </button>
+    </div>
+    <div
+      v-if="getNodeStatus() !== 'idle'"
+      class="absolute -top-3 left-1/2 -translate-x-1/2 h-6 w-6 flex items-center justify-center"
+    >
+      <div
+        :class="[
+          'h-2 w-2 rounded-full border-2 border-white dark:border-card-dark',
+          getNodeStatusIndicatorClass(),
+        ]"
+      ></div>
+    </div>
+    <div
+      v-else-if="data.type !== 'trigger'"
+      class="absolute -top-3 left-1/2 -translate-x-1/2 h-6 w-6 flex items-center justify-center"
+    >
+      <div
+        class="h-2 w-2 rounded-full bg-gray-400 border-2 border-white dark:border-card-dark"
+      ></div>
+    </div>
+    <div
+      class="absolute -bottom-3 left-1/2 -translate-x-1/2 h-6 w-6 flex items-center justify-center"
+    >
+      <div
+        :class="[
+          'h-2 w-2 rounded-full border-2 border-white dark:border-card-dark',
+          getNodeStatusIndicatorClass(),
+        ]"
+      ></div>
     </div>
     <Handle
       v-if="data.type !== 'trigger'"
       type="target"
       :position="Position.Left"
-      :style="{ background: '#28a745', width: '10px', height: '10px' }"
+      :style="{ background: '#10B981', width: '8px', height: '8px', border: '2px solid white' }"
     />
     <Handle
       type="source"
       :position="Position.Right"
-      :style="{ background: '#007bff', width: '10px', height: '10px' }"
+      :style="{ background: '#4F46E5', width: '8px', height: '8px', border: '2px solid white' }"
     />
   </div>
 </template>
 
 <script setup lang="ts">
 import { Handle, Position } from '@vue-flow/core';
-import { inject } from 'vue';
+import { inject, computed } from 'vue';
 import type { Node } from '../api/workflows';
 
 type Props = {
   id: string;
   data: Node;
   selected?: boolean;
+  position?: { x: number; y: number };
 };
 
 const props = defineProps<Props>();
@@ -73,14 +127,12 @@ const emit = defineEmits<{
   run: [nodeId: string];
 }>();
 
-const onNodeRun = inject<() => Promise<void>>('onNodeRun', async () => {});
+const onNodeRun = inject<(node: Node) => Promise<void>>('onNodeRun');
+const onNodePause = inject<(node: Node) => Promise<void>>('onNodePause');
 
-const getNodeTypeLabel = () => {
-  if (props.data.type === 'trigger') {
-    return props.data.subtype || 'trigger';
-  }
-  return props.data.type;
-};
+const isCronActive = computed(() => {
+  return props.data.subtype === 'cron' && props.data.config?.cronActive === true;
+});
 
 const getNodeStatus = () => {
   return props.data.status || 'idle';
@@ -88,7 +140,24 @@ const getNodeStatus = () => {
 
 const getNodeStatusClass = () => {
   const status = getNodeStatus();
-  return `status-${status}`;
+  const statusClasses: Record<string, string> = {
+    idle: 'border-border-light dark:border-border-dark bg-card-light dark:bg-card-dark',
+    progress: 'border-info dark:border-info bg-card-light dark:bg-card-dark border-2',
+    passed: 'border-success dark:border-success bg-card-light dark:bg-card-dark border-2',
+    error: 'border-error dark:border-error bg-card-light dark:bg-card-dark border-2',
+  };
+  return statusClasses[status] || statusClasses.idle;
+};
+
+const getNodeStatusIndicatorClass = () => {
+  const status = getNodeStatus();
+  const indicatorClasses: Record<string, string> = {
+    idle: 'bg-gray-400',
+    progress: 'bg-info animate-pulse',
+    passed: 'bg-success',
+    error: 'bg-error',
+  };
+  return indicatorClasses[status] || indicatorClasses.idle;
 };
 
 const onDelete = () => {
@@ -97,185 +166,117 @@ const onDelete = () => {
 
 const onRun = () => {
   emit('run', props.id);
-  onNodeRun();
+  if (onNodeRun) {
+    onNodeRun(props.data);
+  }
+};
+
+const onPause = () => {
+  if (onNodePause) {
+    onNodePause(props.data);
+  }
+};
+
+const getIcon = () => {
+  const iconMap: Record<string, string> = {
+    trigger: 'webhook',
+    http: 'http',
+    transform: 'transform',
+    agent: 'smart_toy',
+    delay: 'schedule',
+  };
+  return iconMap[props.data.type] || 'circle';
+};
+
+const getIconContainerClass = () => {
+  const colorMap: Record<string, string> = {
+    trigger: 'bg-green-100 dark:bg-green-900',
+    http: 'bg-blue-100 dark:bg-blue-900',
+    transform: 'bg-purple-100 dark:bg-purple-900',
+    agent: 'bg-blue-100 dark:bg-blue-900',
+    delay: 'bg-orange-100 dark:bg-orange-900',
+  };
+  return `flex h-10 w-10 items-center justify-center rounded-lg ${colorMap[props.data.type] || 'bg-gray-100 dark:bg-gray-800'}`;
+};
+
+const getIconClass = () => {
+  const colorMap: Record<string, string> = {
+    trigger: 'text-green-600 dark:text-green-300',
+    http: 'text-blue-600 dark:text-blue-300',
+    transform: 'text-purple-600 dark:text-purple-300',
+    agent: 'text-blue-600 dark:text-blue-300',
+    delay: 'text-orange-600 dark:text-orange-300',
+  };
+  return `material-symbols-outlined ${colorMap[props.data.type] || 'text-gray-600 dark:text-gray-300'}`;
+};
+
+const getNodeTitle = () => {
+  if (props.data.type === 'trigger') {
+    if (props.data.subtype === 'webhook') {
+      return 'Webhook Trigger';
+    } else if (props.data.subtype === 'cron') {
+      return 'Cron Trigger';
+    }
+    return 'Manual Trigger';
+  } else if (props.data.type === 'http') {
+    return `${props.data.method || 'GET'} Request`;
+  } else if (props.data.type === 'agent') {
+    return props.data.name || 'AI Agent';
+  } else if (props.data.type === 'transform') {
+    return 'Transform Data';
+  } else if (props.data.type === 'delay') {
+    return 'Delay';
+  }
+  return props.data.type;
+};
+
+const getNodeSubtitle = () => {
+  if (props.data.type === 'trigger') {
+    if (props.data.subtype === 'webhook') {
+      return 'Starts workflow on HTTP POST';
+    } else if (props.data.subtype === 'cron') {
+      return 'Scheduled trigger';
+    }
+    return 'Manual start';
+  } else if (props.data.type === 'http') {
+    return `HTTP ${props.data.method || 'GET'}`;
+  } else if (props.data.type === 'agent') {
+    return 'AI Agent: Process data with AI';
+  } else if (props.data.type === 'transform') {
+    return 'Transform data';
+  } else if (props.data.type === 'delay') {
+    return 'Wait before continuing';
+  }
+  return '';
+};
+
+const getNodeContent = () => {
+  if (props.data.type === 'trigger') {
+    if (props.data.subtype === 'webhook') {
+      return 'Listening for incoming data...';
+    }
+    return 'Ready to start';
+  } else if (props.data.type === 'http') {
+    return props.data.url || 'No URL configured';
+  } else if (props.data.type === 'agent') {
+    return 'Processing input...';
+  } else if (props.data.type === 'transform') {
+    return 'Transform data';
+  } else if (props.data.type === 'delay') {
+    if (props.data.config?.delayMs) {
+      return `Wait ${props.data.config.delayMs}ms`;
+    } else if (props.data.config?.until) {
+      return `Wait until ${new Date(props.data.config.until).toLocaleString()}`;
+    }
+    return 'Configure delay';
+  }
+  return '';
 };
 </script>
 
 <style scoped>
 .workflow-node {
-  width: 150px;
-  background: white;
-  border: 2px solid #ccc;
-  border-radius: 0.5rem;
-  padding: 0.5rem;
-  cursor: move;
-  user-select: none;
-}
-
-.workflow-node.status-idle {
-  border-color: #ccc;
-}
-
-.workflow-node.status-progress {
-  border-color: #007bff;
-  box-shadow: 0 0 10px rgba(0, 123, 255, 0.3);
-}
-
-.workflow-node.status-passed {
-  border-color: #28a745;
-  background: #d4edda;
-  box-shadow: 0 0 10px rgba(40, 167, 69, 0.3);
-}
-
-.workflow-node.status-error {
-  border-color: #dc3545;
-}
-
-.node-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 0.5rem;
-}
-
-.node-status-indicator {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-}
-
-.loading-icon {
-  color: #007bff;
-  animation: spin 1s linear infinite;
-}
-
-.loading-path-1 {
-  stroke-dasharray: 22;
-  stroke-dashoffset: 22;
-  animation: dash-1 1.5s ease-in-out infinite;
-}
-
-.loading-path-2 {
-  stroke-dasharray: 22;
-  stroke-dashoffset: 22;
-  animation: dash-2 1.5s ease-in-out infinite;
-}
-
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-@keyframes dash-1 {
-  0% {
-    stroke-dashoffset: 22;
-  }
-  50% {
-    stroke-dashoffset: 0;
-  }
-  100% {
-    stroke-dashoffset: -22;
-  }
-}
-
-@keyframes dash-2 {
-  0% {
-    stroke-dashoffset: 22;
-  }
-  50% {
-    stroke-dashoffset: 0;
-  }
-  100% {
-    stroke-dashoffset: -22;
-  }
-}
-
-.node-type-badge {
-  font-size: 0.75rem;
-  padding: 0.25rem 0.5rem;
-  border-radius: 0.25rem;
-  font-weight: 500;
-}
-
-.node-type-badge.trigger {
-  background: #fff3cd;
-  color: #856404;
-}
-
-.node-type-badge.http {
-  background: #d1ecf1;
-  color: #0c5460;
-}
-
-.node-type-badge.transform {
-  background: #d4edda;
-  color: #155724;
-}
-
-.node-type-badge.agent {
-  background: #e2e3e5;
-  color: #383d41;
-}
-
-.node-type-badge.delay {
-  background: #fff3cd;
-  color: #856404;
-}
-
-.node-delete {
-  background: none;
-  border: none;
-  font-size: 1.5rem;
-  cursor: pointer;
-  color: #999;
-  line-height: 1;
-}
-
-.node-delete:hover {
-  color: #dc3545;
-}
-
-.node-content {
-  font-size: 0.85rem;
-  color: #666;
-  margin-bottom: 0.5rem;
-}
-
-.node-actions {
-  display: flex;
-  justify-content: center;
-  margin-top: 0.5rem;
-  padding-top: 0.5rem;
-  border-top: 1px solid #e0e0e0;
-}
-
-.btn-play {
-  background: #28a745;
-  color: white;
-  border: none;
-  border-radius: 50%;
-  width: 32px;
-  height: 32px;
-  cursor: pointer;
-  font-size: 0.9rem;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s;
-  padding: 0;
-  padding-left: 2px;
-}
-
-.btn-play:hover {
-  background: #218838;
-  transform: scale(1.1);
-}
-
-.btn-play:active {
-  transform: scale(0.95);
+  position: relative;
+  min-width: 320px;
 }
 </style>

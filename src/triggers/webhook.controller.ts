@@ -30,7 +30,8 @@ export class WebhookController {
       res.status(HttpStatus.OK).json({
         success: true,
         executionId: execution.id,
-        message: 'Workflow triggered successfully',
+        status: execution.status,
+        output: execution.output,
       });
     } catch (error) {
       res.status(HttpStatus.NOT_FOUND).json({

@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Node } from '../database/entities/node.entity';
@@ -18,6 +18,7 @@ export type CreateNodeDto = {
   headers?: Record<string, string>;
   bodyTemplate?: string;
   template?: Record<string, any>;
+  name?: string;
 };
 
 export type UpdateNodeDto = Partial<CreateNodeDto>;
@@ -47,10 +48,6 @@ export class NodesService {
 
     if (savedNode.type === 'trigger' && savedNode.subtype === 'webhook') {
       await this.webhookService.registerWebhook(savedNode);
-    } else if (savedNode.type === 'trigger' && savedNode.subtype === 'cron') {
-      if (savedNode.config?.cronExpression) {
-        await this.cronService.scheduleCronJob(savedNode);
-      }
     }
 
     return savedNode;
@@ -75,14 +72,47 @@ export class NodesService {
     const node = await this.findOne(id);
     const oldSubtype = node.subtype;
     const oldCronExpression = node.config?.cronExpression;
+    const oldCronActive = node.config?.cronActive;
 
-    console.log('NodesService.update called:', { id, updateNodeDto, currentPosition: node.position });
-    Object.assign(node, updateNodeDto);
-    
+    console.log('NodesService.update called:', {
+      id,
+      updateNodeDto,
+      currentPosition: node.position,
+      newPosition: updateNodeDto.position,
+    });
+
     if (updateNodeDto.position !== undefined) {
       node.position = updateNodeDto.position;
     }
-    
+
+    if (updateNodeDto.config !== undefined) {
+      node.config = updateNodeDto.config;
+    }
+    if (updateNodeDto.method !== undefined) {
+      node.method = updateNodeDto.method;
+    }
+    if (updateNodeDto.url !== undefined) {
+      node.url = updateNodeDto.url;
+    }
+    if (updateNodeDto.headers !== undefined) {
+      node.headers = updateNodeDto.headers;
+    }
+    if (updateNodeDto.bodyTemplate !== undefined) {
+      node.bodyTemplate = updateNodeDto.bodyTemplate;
+    }
+    if (updateNodeDto.template !== undefined) {
+      node.template = updateNodeDto.template;
+    }
+    if (updateNodeDto.subtype !== undefined) {
+      node.subtype = updateNodeDto.subtype;
+    }
+    if (updateNodeDto.type !== undefined) {
+      node.type = updateNodeDto.type;
+    }
+    if (updateNodeDto.name !== undefined) {
+      node.name = updateNodeDto.name;
+    }
+
     console.log('NodesService.update after assign:', { id, position: node.position });
     const savedNode = await this.nodeRepository.save(node);
     console.log('NodesService.update after save:', { id, savedPosition: savedNode.position });
@@ -98,24 +128,26 @@ export class NodesService {
         await this.webhookService.unregisterWebhook(node);
       }
 
+      if (oldSubtype === 'cron' && savedNode.subtype !== 'cron') {
+        await this.cronService.unscheduleCronJob(node.id);
+      }
       if (savedNode.subtype === 'cron') {
         const newCronExpression = savedNode.config?.cronExpression;
-        const cronExpressionChanged = oldCronExpression !== newCronExpression;
-        const subtypeChangedToCron = oldSubtype !== 'cron';
-        
-        if (subtypeChangedToCron || cronExpressionChanged) {
+        const newCronActive = savedNode.config?.cronActive;
+
+        if (oldCronExpression !== newCronExpression) {
           await this.cronService.unscheduleCronJob(node.id);
-          if (newCronExpression) {
-            console.log('Scheduling cron job for node:', {
-              nodeId: savedNode.id,
-              workflowId: savedNode.workflowId,
-              cronExpression: newCronExpression,
-            });
+          if (savedNode.config) {
+            savedNode.config.cronActive = false;
+            await this.nodeRepository.save(savedNode);
+          }
+        } else if (oldCronActive !== newCronActive) {
+          if (newCronActive === true) {
             await this.cronService.scheduleCronJob(savedNode);
+          } else {
+            await this.cronService.unscheduleCronJob(node.id);
           }
         }
-      } else if (oldSubtype === 'cron') {
-        await this.cronService.unscheduleCronJob(node.id);
       }
     }
 
@@ -159,5 +191,36 @@ export class NodesService {
   async getWebhookInfo(nodeId: string): Promise<{ path: string; url: string } | null> {
     const node = await this.findOne(nodeId);
     return this.webhookService.getWebhookInfo(node);
+  }
+
+  async startCron(id: string): Promise<{ message: string }> {
+    const node = await this.findOne(id);
+    if (node.type !== 'trigger' || node.subtype !== 'cron') {
+      throw new BadRequestException('Node is not a cron trigger');
+    }
+    const cronExpression = node.config?.cronExpression;
+    if (!cronExpression) {
+      throw new BadRequestException('Cron expression is not set');
+    }
+    await this.cronService.scheduleCronJob(node);
+    if (!node.config) {
+      node.config = {};
+    }
+    node.config.cronActive = true;
+    await this.nodeRepository.save(node);
+    return { message: 'Cron job scheduled' };
+  }
+
+  async stopCron(id: string): Promise<{ message: string }> {
+    const node = await this.findOne(id);
+    if (node.type !== 'trigger' || node.subtype !== 'cron') {
+      throw new BadRequestException('Node is not a cron trigger');
+    }
+    await this.cronService.unscheduleCronJob(node.id);
+    if (node.config) {
+      node.config.cronActive = false;
+      await this.nodeRepository.save(node);
+    }
+    return { message: 'Cron job stopped' };
   }
 }

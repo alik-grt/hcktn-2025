@@ -42,6 +42,16 @@ export class NodesController {
     await this.nodesService.remove(id);
   }
 
+  @Post(':id/cron/start')
+  async startCron(@Param('id') id: string) {
+    return await this.nodesService.startCron(id);
+  }
+
+  @Post(':id/cron/stop')
+  async stopCron(@Param('id') id: string) {
+    return await this.nodesService.stopCron(id);
+  }
+
   @Post('edges')
   @HttpCode(HttpStatus.CREATED)
   async createEdge(@Body() createEdgeDto: CreateEdgeDto) {

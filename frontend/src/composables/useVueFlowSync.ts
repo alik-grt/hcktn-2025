@@ -2,6 +2,7 @@ import { ref, watch, nextTick, type Ref } from 'vue';
 import { useVueFlow } from '@vue-flow/core';
 import type { Node as VueFlowNode, Edge as VueFlowEdge } from '@vue-flow/core';
 import type { Node, Edge } from '../api/workflows';
+// import { useEdgeAnimation } from './useEdgeAnimation';
 
 export function useVueFlowSync(
   nodes: Ref<Node[]>,
@@ -22,6 +23,12 @@ export function useVueFlowSync(
     }));
   };
 
+  // const { isEdgeAnimated, getEdgeAnimationProgress } = useEdgeAnimation(
+  //   nodes,
+  //   edges,
+  //   getNodeStatus,
+  // );
+
   const convertToVueFlowEdges = (edgesData: Edge[]): VueFlowEdge[] => {
     const nodeIds = new Set(nodes.value.map((n: Node) => n.id));
     const vueFlowNodeIds = new Set(vueFlowNodes.value.map((n: VueFlowNode) => n.id));
@@ -36,22 +43,20 @@ export function useVueFlowSync(
         const hasTargetInData = nodeIds.has(edge.targetNodeId);
         const hasSourceInVueFlow = vueFlowNodeIds.has(edge.sourceNodeId);
         const hasTargetInVueFlow = vueFlowNodeIds.has(edge.targetNodeId);
-        
-        const isValid = hasSourceInData && hasTargetInData && hasSourceInVueFlow && hasTargetInVueFlow;
-        
+
+        const isValid =
+          hasSourceInData && hasTargetInData && hasSourceInVueFlow && hasTargetInVueFlow;
+
         if (!isValid) {
-          console.warn(
-            `[Vue Flow]: Edge source or target is missing. Filtering out edge.`,
-            {
-              edgeId: edge.id,
-              sourceId: edge.sourceNodeId,
-              targetId: edge.targetNodeId,
-              hasSourceInData,
-              hasTargetInData,
-              hasSourceInVueFlow,
-              hasTargetInVueFlow,
-            },
-          );
+          console.warn(`[Vue Flow]: Edge source or target is missing. Filtering out edge.`, {
+            edgeId: edge.id,
+            sourceId: edge.sourceNodeId,
+            targetId: edge.targetNodeId,
+            hasSourceInData,
+            hasTargetInData,
+            hasSourceInVueFlow,
+            hasTargetInVueFlow,
+          });
           return false;
         }
         return true;
@@ -59,13 +64,20 @@ export function useVueFlowSync(
       .map((edge) => {
         const sourceStatus = sourceNodeStatuses.get(edge.sourceNodeId) || 'idle';
         const isAnimated = sourceStatus === 'progress' || sourceStatus === 'passed';
+        // const hasParticleAnimation = isEdgeAnimated(edge.id);
+        // const animationProgress = hasParticleAnimation ? getEdgeAnimationProgress(edge.id) : 0;
 
         return {
           id: edge.id,
           source: edge.sourceNodeId,
           target: edge.targetNodeId,
           type: 'default',
+          // type: hasParticleAnimation ? 'animated' : 'default',
           animated: isAnimated,
+          // data: {
+          //   hasParticleAnimation,
+          //   animationProgress,
+          // },
           style: isAnimated
             ? {
                 stroke: sourceStatus === 'progress' ? '#007bff' : '#28a745',
@@ -74,6 +86,10 @@ export function useVueFlowSync(
             : undefined,
         };
       });
+  };
+
+  const updateEdges = () => {
+    vueFlowEdges.value = convertToVueFlowEdges(edges.value);
   };
 
   watch(
@@ -100,7 +116,13 @@ export function useVueFlowSync(
             const posDiff =
               Math.abs(currentPos.x - (newNodePos?.x || 0)) +
               Math.abs(currentPos.y - (newNodePos?.y || 0));
-            if (posDiff > 1) {
+            if (posDiff > 5) {
+              newNode.position = { x: currentPos.x, y: currentPos.y };
+            } else if (
+              newNodePos &&
+              Math.abs(currentPos.x - newNodePos.x) < 0.1 &&
+              Math.abs(currentPos.y - newNodePos.y) < 0.1
+            ) {
               newNode.position = { x: currentPos.x, y: currentPos.y };
             }
           }
@@ -108,10 +130,10 @@ export function useVueFlowSync(
       }
 
       vueFlowNodes.value = newVueFlowNodes;
-      
+
       await nextTick();
-      
-      vueFlowEdges.value = convertToVueFlowEdges(edges.value);
+
+      updateEdges();
     },
     { deep: true, flush: 'post' },
   );
@@ -120,10 +142,17 @@ export function useVueFlowSync(
     () => edges.value,
     async () => {
       await nextTick();
-      vueFlowEdges.value = convertToVueFlowEdges(edges.value);
+      updateEdges();
     },
     { deep: true },
   );
+
+  // setInterval(() => {
+  //   const hasAnimatedEdges = vueFlowEdges.value.some((e) => e.data?.hasParticleAnimation);
+  //   if (hasAnimatedEdges) {
+  //     updateEdges();
+  //   }
+  // }, 50);
 
   const getVueFlowNodePosition = (nodeId: string) => {
     const vueFlowNode = vueFlowNodes.value.find((n) => n.id === nodeId);

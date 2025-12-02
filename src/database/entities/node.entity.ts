@@ -52,6 +52,9 @@ export class Node {
   @Column({ type: 'jsonb', nullable: true })
   template: Record<string, any>;
 
+  @Column({ type: 'varchar', length: 255, nullable: true })
+  name: string;
+
   @CreateDateColumn()
   createdAt: Date;
 

@@ -46,9 +46,9 @@ export function useWorkflowManagement() {
           workflow.value = await workflowsApi.getById(newRouteId as string);
           const loadedNodes = await workflowsApi.getNodes(newRouteId as string);
           const loadedEdges = await workflowsApi.getEdges(newRouteId as string);
-          
+
           nodes.value = loadedNodes;
-          
+
           const nodeIds = new Set(loadedNodes.map((n: Node) => n.id));
           const validEdges = loadedEdges.filter((edge: Edge) => {
             const hasSource = nodeIds.has(edge.sourceNodeId);
@@ -64,7 +64,7 @@ export function useWorkflowManagement() {
             }
             return hasSource && hasTarget;
           });
-          
+
           edges.value = validEdges;
           return true;
         }
@@ -84,9 +84,9 @@ export function useWorkflowManagement() {
       workflow.value = await workflowsApi.getById(idToLoad);
       const loadedNodes = await workflowsApi.getNodes(idToLoad);
       const loadedEdges = await workflowsApi.getEdges(idToLoad);
-      
+
       nodes.value = loadedNodes;
-      
+
       const nodeIds = new Set(loadedNodes.map((n: Node) => n.id));
       const validEdges = loadedEdges.filter((edge: Edge) => {
         const hasSource = nodeIds.has(edge.sourceNodeId);
@@ -102,7 +102,7 @@ export function useWorkflowManagement() {
         }
         return hasSource && hasTarget;
       });
-      
+
       edges.value = validEdges;
       return true;
     } catch (error) {
@@ -126,6 +126,20 @@ export function useWorkflowManagement() {
       console.error('Failed to save workflow:', error);
     } finally {
       saving.value = false;
+    }
+  };
+
+  const updateWorkflowName = async (name: string) => {
+    if (!workflow.value || !name.trim()) {
+      return;
+    }
+    try {
+      workflow.value = await workflowsApi.update(workflow.value.id, {
+        name: name.trim(),
+      });
+    } catch (error) {
+      console.error('Failed to update workflow name:', error);
+      throw error;
     }
   };
 
@@ -163,5 +177,6 @@ export function useWorkflowManagement() {
     saveWorkflow,
     runWorkflow,
     resetWorkflow,
+    updateWorkflowName,
   };
 }

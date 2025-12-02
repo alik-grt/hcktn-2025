@@ -26,7 +26,7 @@ export class ExecutionService {
     const where = workflowId ? { workflowId } : {};
     return await this.executionRepository.find({
       where,
-      relations: ['executionNodes'],
+      relations: ['executionNodes', 'workflow'],
       order: { startedAt: 'DESC' },
     });
   }
@@ -34,7 +34,7 @@ export class ExecutionService {
   async findOne(id: string): Promise<Execution> {
     const execution = await this.executionRepository.findOne({
       where: { id },
-      relations: ['executionNodes'],
+      relations: ['executionNodes', 'workflow'],
     });
     if (!execution) {
       throw new NotFoundException(`Execution with ID ${id} not found`);

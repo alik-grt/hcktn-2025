@@ -37,6 +37,7 @@ export type Node = {
   headers?: Record<string, string>;
   bodyTemplate?: string;
   template?: Record<string, any>;
+  name?: string;
   status?: 'idle' | 'progress' | 'passed' | 'error';
   createdAt: string;
   updatedAt: string;
@@ -67,6 +68,7 @@ export type CreateNodeDto = {
   headers?: Record<string, string>;
   bodyTemplate?: string;
   template?: Record<string, any>;
+  name?: string;
 };
 
 export type CreateEdgeDto = {
@@ -166,5 +168,13 @@ export const workflowsApi = {
 
   async clearExecutions(workflowId: string): Promise<void> {
     await api.delete(`/executions?workflowId=${workflowId}`);
+  },
+
+  async startCron(nodeId: string): Promise<void> {
+    await api.post(`/nodes/${nodeId}/cron/start`, {});
+  },
+
+  async stopCron(nodeId: string): Promise<void> {
+    await api.post(`/nodes/${nodeId}/cron/stop`, {});
   },
 };

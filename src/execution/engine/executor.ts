@@ -241,12 +241,6 @@ export class Executor {
 
     visit(startNodeId);
 
-    for (const node of nodes) {
-      if (!visited.has(node.id)) {
-        visit(node.id);
-      }
-    }
-
     return sorted;
   }
 }

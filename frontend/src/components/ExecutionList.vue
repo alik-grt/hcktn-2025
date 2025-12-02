@@ -58,9 +58,11 @@ const emit = defineEmits<{
   select: [executionId: string];
 }>();
 
-const { executions: socketExecutions, connect, disconnect } = useWorkflowSocket(
-  computed(() => props.workflowId),
-);
+const {
+  executions: socketExecutions,
+  connect,
+  disconnect,
+} = useWorkflowSocket(computed(() => props.workflowId));
 
 const executions = computed(() => {
   if (!socketExecutions.value || socketExecutions.value.length === 0) {
@@ -299,4 +301,3 @@ onUnmounted(() => {
   font-family: monospace;
 }
 </style>
-

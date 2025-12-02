@@ -1,50 +1,117 @@
 <template>
-  <div class="workflow-builder">
-    <WorkflowToolbar
+  <div class="relative flex min-h-screen w-full">
+    <aside
+      class="flex h-screen w-64 flex-col border-r border-border-light dark:border-border-dark bg-card-light dark:bg-card-dark p-4 sticky top-0"
+    >
+      <div class="flex flex-col gap-4 flex-grow">
+        <div class="flex items-center gap-3 px-2">
+          <h1
+            class="text-text-light-primary dark:text-text-dark-primary text-base font-bold leading-normal"
+          >
+            Automation Studio
+          </h1>
+        </div>
+        <nav class="flex flex-col gap-2 mt-6">
+          <router-link
+            to="/"
+            class="flex items-center gap-3 px-3 py-2 rounded text-text-light-secondary dark:text-text-dark-secondary hover:bg-gray-100 dark:hover:bg-gray-700"
+            active-class="bg-gray-100 dark:bg-gray-700 text-primary"
+            exact-active-class="bg-gray-100 dark:bg-gray-700 text-primary"
+          >
+            <span class="material-symbols-outlined">dashboard</span>
+            <p class="text-sm font-medium leading-normal">Dashboard</p>
+          </router-link>
+          <router-link
+            to="/workflows"
+            class="flex items-center gap-3 px-3 py-2 rounded bg-primary/10 dark:bg-primary/20 text-primary"
+            active-class="bg-primary/10 dark:bg-primary/20 text-primary"
+          >
+            <span class="material-symbols-outlined fill text-primary">hub</span>
+            <p class="text-sm font-semibold leading-normal">Workflows</p>
+          </router-link>
+          <router-link
+            to="/executions"
+            class="flex items-center gap-3 px-3 py-2 rounded text-text-light-secondary dark:text-text-dark-secondary hover:bg-gray-100 dark:hover:bg-gray-700"
+            active-class="bg-gray-100 dark:bg-gray-700 text-primary"
+          >
+            <span class="material-symbols-outlined">play_circle</span>
+            <p class="text-sm font-medium leading-normal">Executions</p>
+          </router-link>
+          <router-link
+            to="/variables"
+            class="flex items-center gap-3 px-3 py-2 rounded text-text-light-secondary dark:text-text-dark-secondary hover:bg-gray-100 dark:hover:bg-gray-700"
+            active-class="bg-gray-100 dark:bg-gray-700 text-primary"
+          >
+            <span class="material-symbols-outlined">data_object</span>
+            <p class="text-sm font-medium leading-normal">Variables</p>
+          </router-link>
+          <router-link
+            to="/credentials"
+            class="flex items-center gap-3 px-3 py-2 rounded text-text-light-secondary dark:text-text-dark-secondary hover:bg-gray-100 dark:hover:bg-gray-700"
+            active-class="bg-gray-100 dark:bg-gray-700 text-primary"
+          >
+            <span class="material-symbols-outlined">key</span>
+            <p class="text-sm font-medium leading-normal">Credentials</p>
+          </router-link>
+        </nav>
+      </div>
+    </aside>
+    <main class="flex-1 flex flex-col">
+      <WorkflowToolbar
+        :workflow="workflow"
+        :saving="saving"
+        :running="running"
+        @go-back="goBack"
+        @save="handleSave"
+        @run="runWorkflow"
+        @update-name="handleUpdateName"
+      />
+      <div class="flex flex-1 overflow-hidden">
+        <WorkflowCanvas
+          ref="canvasRef"
+          :workflow="workflow"
+          :vue-flow-nodes="vueFlowNodes"
+          :vue-flow-edges="vueFlowEdges"
+          :placeholder-visible="placeholderVisible"
+          :placeholder-position="placeholderPosition"
+          :node-select-menu-visible="nodeSelectMenuVisible"
+          :node-select-menu-position="nodeSelectMenuPosition"
+          :node-types="nodeTypes"
+          @connect="onConnect"
+          @connect-start="onConnectStart"
+          @connect-end="onConnectEnd"
+          @nodes-change="onNodesChange"
+          @edges-change="onEdgesChange"
+          @node-click="onNodeClick"
+          @node-double-click="onNodeDoubleClick"
+          @pane-click="onPaneClick"
+          @drop="onDrop"
+          @show-node-select-menu="showNodeSelectMenu"
+          @node-type-select="onNodeTypeSelect"
+          @hide-node-select-menu="hideNodeSelectMenu"
+          @init="onVueFlowInit"
+          @viewport-change="onViewportChange"
+          @move="onViewportChange"
+          @move-start="onViewportChange"
+          @move-end="onViewportChange"
+          @zoom="onViewportChange"
+          @zoom-change="onViewportChange"
+        />
+      </div>
+    </main>
+    <NodeSidebar
+      :selected-node="selectedNode"
       :workflow="workflow"
-      :saving="saving"
-      :running="running"
-      @go-back="goBack"
-      @save="handleSave"
-      @run="runWorkflow"
+      :execution-finished="executionFinished"
+      :last-execution-id="lastExecutionId"
+      @update-node="updateNode"
     />
-    <div class="builder-content">
-      <NodePalette :workflow="workflow" @execution-select="onExecutionSelect" />
-      <WorkflowCanvas
-        ref="canvasRef"
-        :workflow="workflow"
-        :vue-flow-nodes="vueFlowNodes"
-        :vue-flow-edges="vueFlowEdges"
-        :placeholder-visible="placeholderVisible"
-        :placeholder-position="placeholderPosition"
-        :node-select-menu-visible="nodeSelectMenuVisible"
-        :node-select-menu-position="nodeSelectMenuPosition"
-        :node-types="nodeTypes"
-        @connect="onConnect"
-        @connect-start="onConnectStart"
-        @connect-end="onConnectEnd"
-        @nodes-change="onNodesChange"
-        @edges-change="onEdgesChange"
-        @node-click="onNodeClick"
-        @node-double-click="onNodeDoubleClick"
-        @drop="onDrop"
-        @show-node-select-menu="showNodeSelectMenu"
-        @node-type-select="onNodeTypeSelect"
-        @hide-node-select-menu="hideNodeSelectMenu"
-      />
-      <NodeSidebar
-        :selected-node="selectedNode"
-        :workflow="workflow"
-        :execution-finished="executionFinished"
-        :last-execution-id="lastExecutionId"
-        @update-node="updateNode"
-      />
-    </div>
   </div>
 </template>
 
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch, provide, nextTick } from 'vue';
+import { useDebounceFn } from '@vueuse/core';
 import { useRoute, useRouter } from 'vue-router';
 import type { Node as VueFlowNode, Connection } from '@vue-flow/core';
 import { useWorkflowManagement } from '../composables/useWorkflowManagement';
@@ -53,9 +120,10 @@ import { useEdgeManagement } from '../composables/useEdgeManagement';
 import { useVueFlowSync } from '../composables/useVueFlowSync';
 import { useConnectionPlaceholder } from '../composables/useConnectionPlaceholder';
 import { useWorkflowSocket } from '../composables/useWorkflowSocket';
+import { useViewportPersistence } from '../composables/useViewportPersistence';
 import type { Node } from '../api/workflows';
+import { workflowsApi } from '../api/workflows';
 import WorkflowToolbar from '../components/WorkflowToolbar.vue';
-import NodePalette from '../components/NodePalette.vue';
 import WorkflowCanvas from '../components/WorkflowCanvas.vue';
 import NodeSidebar from '../components/NodeSidebar.vue';
 
@@ -75,6 +143,7 @@ const {
   saveWorkflow,
   runWorkflow,
   resetWorkflow,
+  updateWorkflowName,
 } = useWorkflowManagement();
 
 const selectedNode = ref<Node | null>(null);
@@ -97,8 +166,23 @@ const {
   updateNode: updateNodeData,
   updateNodePosition,
   deleteNode,
-  saveAllNodePositions,
+  saveAllNodes,
 } = useNodeManagement(nodes, edges, selectedNode);
+
+const nodePositionDebouncers = new Map<
+  string,
+  (nodeId: string, position: { x: number; y: number }) => void
+>();
+
+const getDebouncedUpdateForNode = (nodeId: string) => {
+  if (!nodePositionDebouncers.has(nodeId)) {
+    const debouncedFn = useDebounceFn((nodeId: string, position: { x: number; y: number }) => {
+      updateNodePosition(nodeId, position);
+    }, 300);
+    nodePositionDebouncers.set(nodeId, debouncedFn);
+  }
+  return nodePositionDebouncers.get(nodeId)!;
+};
 
 const { createEdge, deleteEdge, cleanupOrphanedEdges, getConnectedNodeIds } = useEdgeManagement(
   edges,
@@ -106,6 +190,9 @@ const { createEdge, deleteEdge, cleanupOrphanedEdges, getConnectedNodeIds } = us
 );
 
 const { vueFlowNodes, vueFlowEdges, vueFlowInstance } = useVueFlowSync(nodes, edges, getNodeStatus);
+
+const { saveViewport, restoreViewport, clearViewport, isRestoringViewport, hasRestoredViewport } =
+  useViewportPersistence(vueFlowInstance, workflowId);
 
 const {
   placeholderVisible,
@@ -129,18 +216,44 @@ const nodeTypes = [
   { type: 'delay', label: 'Delay', icon: '⏱️' },
 ];
 
-const handleNodeRun = async () => {
+const handleNodeRun = async (node: Node) => {
   if (!workflow.value) {
+    return;
+  }
+  if (node.type === 'trigger' && node.subtype === 'cron') {
+    try {
+      await workflowsApi.startCron(node.id);
+      const updatedNode = nodes.value.find((n: Node) => n.id === node.id);
+      if (updatedNode && updatedNode.config) {
+        updatedNode.config.cronActive = true;
+      }
+    } catch (error) {
+      console.error('Failed to start cron job:', error);
+    }
     return;
   }
   await runWorkflow();
 };
 
-provide('onNodeRun', handleNodeRun);
-
-const onExecutionSelect = (executionId: string) => {
-  lastExecutionId.value = executionId;
+const handleNodePause = async (node: Node) => {
+  if (!workflow.value) {
+    return;
+  }
+  if (node.type === 'trigger' && node.subtype === 'cron') {
+    try {
+      await workflowsApi.stopCron(node.id);
+      const updatedNode = nodes.value.find((n: Node) => n.id === node.id);
+      if (updatedNode && updatedNode.config) {
+        updatedNode.config.cronActive = false;
+      }
+    } catch (error) {
+      console.error('Failed to stop cron job:', error);
+    }
+  }
 };
+
+provide('onNodeRun', handleNodeRun);
+provide('onNodePause', handleNodePause);
 
 const onDrop = async (event: DragEvent) => {
   event.preventDefault();
@@ -220,15 +333,21 @@ const onNodeTypeSelect = async (nodeType: string) => {
 
 const onNodesChange = (changes: any[]) => {
   for (const change of changes) {
-    if (change.type === 'position') {
-      if (change.dragging === false && change.position) {
-        const position = change.position;
-        if (position && typeof position === 'object' && 'x' in position && 'y' in position) {
-          const node = nodes.value.find((n: Node) => n.id === change.id);
-          if (node) {
-            updateNodePosition(change.id, { x: position.x, y: position.y });
-          }
-        }
+    if (change.type === 'remove') {
+      deleteNode(change.id);
+    } else if (change.type === 'position') {
+      if (!change.position) {
+        continue;
+      }
+      const position = change.position;
+      if (
+        position &&
+        typeof position === 'object' &&
+        typeof position.x === 'number' &&
+        typeof position.y === 'number'
+      ) {
+        const debouncedUpdate = getDebouncedUpdateForNode(change.id);
+        debouncedUpdate(change.id, { x: position.x, y: position.y });
       }
     }
   }
@@ -245,6 +364,10 @@ const onEdgesChange = (changes: any[]) => {
 const onNodeClick = (event: { node: VueFlowNode }) => {
   selectedNode.value = event.node.data as Node;
   hidePlaceholder();
+};
+
+const onPaneClick = () => {
+  selectedNode.value = null;
 };
 
 const onNodeDoubleClick = (event: { node: VueFlowNode }) => {
@@ -284,12 +407,29 @@ const updateNode = async (node: Node) => {
 };
 
 const handleSave = async () => {
+  console.log('handleSave: Saving workflow and nodes', {
+    vueFlowNodesCount: vueFlowNodes.value.length,
+    nodesCount: nodes.value.length,
+    vueFlowNodes: vueFlowNodes.value.map((n) => ({
+      id: n.id,
+      position: n.position,
+    })),
+  });
   await saveWorkflow();
-  await saveAllNodePositions(vueFlowNodes.value);
+  await saveAllNodes(vueFlowNodes.value);
+  console.log('handleSave: Save completed');
 };
 
 const goBack = () => {
   router.push('/');
+};
+
+const handleUpdateName = async (name: string) => {
+  try {
+    await updateWorkflowName(name);
+  } catch (error) {
+    console.error('Failed to update workflow name:', error);
+  }
 };
 
 watch(
@@ -323,6 +463,75 @@ watch(socketWorkflowId, (newId: string | null, oldId: string | null) => {
 });
 
 const isUpdatingStatuses = ref(false);
+
+const hasFocusedOnTrigger = ref(false);
+
+const focusOnTriggerNode = async () => {
+  if (hasFocusedOnTrigger.value) {
+    return;
+  }
+
+  if (!vueFlowInstance) {
+    return;
+  }
+
+  const triggerNode = nodes.value.find((node) => node.type === 'trigger');
+  if (!triggerNode) {
+    return;
+  }
+
+  const vueFlowNode = vueFlowNodes.value.find((n) => n.id === triggerNode.id);
+  if (!vueFlowNode || !vueFlowNode.position) {
+    return;
+  }
+
+  const position = vueFlowNode.position;
+  if (!position || typeof position.x !== 'number' || typeof position.y !== 'number') {
+    return;
+  }
+
+  try {
+    await nextTick();
+
+    if (vueFlowInstance.fitView && typeof vueFlowInstance.fitView === 'function') {
+      vueFlowInstance.fitView({
+        nodes: [triggerNode.id],
+        padding: 0.2,
+        duration: 400,
+      });
+      hasFocusedOnTrigger.value = true;
+    } else if (vueFlowInstance.setCenter && typeof vueFlowInstance.setCenter === 'function') {
+      vueFlowInstance.setCenter(position.x, position.y, {
+        zoom: 1.2,
+        duration: 400,
+      });
+      hasFocusedOnTrigger.value = true;
+    }
+  } catch (error) {
+    console.error('Failed to focus on trigger node:', error);
+  }
+};
+
+const onVueFlowInit = async () => {
+  await nextTick();
+
+  const restored = await restoreViewport();
+  if (!restored) {
+    if (!hasFocusedOnTrigger.value) {
+      setTimeout(() => {
+        focusOnTriggerNode();
+      }, 100);
+    }
+  } else {
+    hasFocusedOnTrigger.value = true;
+  }
+};
+
+const onViewportChange = () => {
+  if (!isRestoringViewport.value) {
+    saveViewport();
+  }
+};
 
 watch(
   () => nodeStatuses.value,
@@ -364,30 +573,68 @@ watch(
   { deep: true, immediate: true, flush: 'post' },
 );
 
+watch(
+  () => vueFlowNodes.value.length,
+  async () => {
+    if (vueFlowNodes.value.length > 0 && !hasFocusedOnTrigger.value) {
+      await nextTick();
+      setTimeout(() => {
+        focusOnTriggerNode();
+      }, 300);
+    }
+  },
+);
+
+watch(
+  () => [route.params.id, route.path] as const,
+  async ([newId, newPath], [oldId, oldPath]) => {
+    if (newId !== oldId || newPath !== oldPath) {
+      hasFocusedOnTrigger.value = false;
+      disconnect();
+      resetWorkflow();
+      selectedNode.value = null;
+      if ((newId && newId !== 'new') || (newPath && newPath !== '/workflow/new')) {
+        const loaded = await loadWorkflow();
+        if (loaded) {
+          await cleanupOrphanedEdges();
+          connect();
+          await nextTick();
+          const restored = await restoreViewport();
+          if (!restored) {
+            setTimeout(() => {
+              focusOnTriggerNode();
+            }, 300);
+          } else {
+            hasFocusedOnTrigger.value = true;
+          }
+        }
+      }
+    }
+  },
+  { immediate: false },
+);
+
 onMounted(async () => {
   const loaded = await loadWorkflow();
   if (loaded) {
     await cleanupOrphanedEdges();
     connect();
+    await nextTick();
+    const restored = await restoreViewport();
+    if (!restored) {
+      setTimeout(() => {
+        focusOnTriggerNode();
+      }, 300);
+    } else {
+      hasFocusedOnTrigger.value = true;
+    }
   }
 });
 
 onUnmounted(() => {
+  saveViewport();
   disconnect();
 });
 </script>
 
-<style scoped>
-.workflow-builder {
-  display: flex;
-  flex-direction: column;
-  height: 100vh;
-  background: #f5f5f5;
-}
-
-.builder-content {
-  display: flex;
-  flex: 1;
-  overflow: hidden;
-}
-</style>
+<style scoped></style>

@@ -5,6 +5,8 @@
       :nodes="vueFlowNodes"
       :edges="vueFlowEdges"
       :node-types="nodeTypesMap"
+      :min-zoom="0.1"
+      :max-zoom="4"
       @connect="onConnect"
       @connect-start="onConnectStart"
       @connect-end="onConnectEnd"
@@ -12,7 +14,12 @@
       @edges-change="onEdgesChange"
       @node-click="onNodeClick"
       @node-double-click="onNodeDoubleClick"
+      @pane-click="onPaneClick"
       @drop="onDrop"
+      @init="onInit"
+      @viewport-change="onViewportChange"
+      @move="onViewportChange"
+      @zoom="onViewportChange"
       @dragover.prevent
       class="vue-flow-container"
     >
@@ -52,6 +59,7 @@ import { MiniMap } from '@vue-flow/minimap';
 import type { Node as VueFlowNode, Edge as VueFlowEdge, Connection } from '@vue-flow/core';
 import type { Workflow, Node } from '../api/workflows';
 import WorkflowNode from './WorkflowNode.vue';
+// import AnimatedEdge from './AnimatedEdge.vue';
 import AddNodePlaceholder from './AddNodePlaceholder.vue';
 import NodeSelectMenu from './NodeSelectMenu.vue';
 
@@ -78,15 +86,25 @@ const emit = defineEmits<{
   edgesChange: [changes: any[]];
   nodeClick: [event: { node: VueFlowNode }];
   nodeDoubleClick: [event: { node: VueFlowNode }];
+  paneClick: [event: MouseEvent];
   drop: [event: DragEvent];
   showNodeSelectMenu: [];
   nodeTypeSelect: [nodeType: string];
   hideNodeSelectMenu: [];
+  init: [];
+  viewportChange: [];
+  move: [];
+  zoom: [];
 }>();
 
 const nodeTypesMap = {
   workflowNode: markRaw(WorkflowNode),
 };
+
+// const edgeTypesMap = {
+//   animated: markRaw(AnimatedEdge),
+//   default: markRaw(AnimatedEdge),
+// };
 
 const onConnect = (connection: Connection) => {
   emit('connect', connection);
@@ -116,8 +134,20 @@ const onNodeDoubleClick = (event: { node: VueFlowNode }) => {
   emit('nodeDoubleClick', event);
 };
 
+const onPaneClick = (event: MouseEvent) => {
+  emit('paneClick', event);
+};
+
 const onDrop = (event: DragEvent) => {
   emit('drop', event);
+};
+
+const onInit = () => {
+  emit('init');
+};
+
+const onViewportChange = () => {
+  emit('viewportChange');
 };
 
 defineExpose({
@@ -129,6 +159,25 @@ defineExpose({
 .canvas-wrapper {
   flex: 1;
   position: relative;
+  background: rgb(249 250 251);
+}
+
+.dark .canvas-wrapper {
+  background: rgba(17, 24, 39, 0.5);
+}
+
+.canvas-wrapper::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(#e5e7eb_1px, transparent_1px);
+  background-size: 16px 16px;
+  pointer-events: none;
+}
+
+.dark .canvas-wrapper::before {
+  background: radial-gradient(#374151_1px, transparent_1px);
+  background-size: 16px 16px;
 }
 
 .vue-flow-container {
@@ -173,4 +222,3 @@ defineExpose({
   color: #666;
 }
 </style>
-

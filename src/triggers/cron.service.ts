@@ -39,8 +39,8 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
         relations: ['workflow'],
       });
       for (const node of cronNodes) {
-        if (node.config?.cronExpression) {
-          await this.registerCronJob(node);
+        if (node.config?.cronExpression && node.config?.cronActive === true) {
+          await this.registerCronJob(node, true);
         }
       }
     } catch (error) {
@@ -48,7 +48,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     }
   }
 
-  private async registerCronJob(node: Node): Promise<void> {
+  private async registerCronJob(node: Node, startImmediately: boolean = false): Promise<void> {
     if (node.type !== 'trigger' || node.subtype !== 'cron') {
       this.logger.warn(`Node ${node.id} is not a cron trigger node`);
       return;
@@ -86,11 +86,13 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
           }
         },
         null,
-        true,
+        startImmediately,
       );
 
       this.cronJobs.set(jobId, job);
-      this.logger.log(`Registered cron job: ${jobId} with expression: ${cronExpression} for workflow ${node.workflowId}`);
+      this.logger.log(
+        `Registered cron job: ${jobId} with expression: ${cronExpression} for workflow ${node.workflowId}, started: ${startImmediately}`,
+      );
     } catch (error) {
       this.logger.error(`Failed to register cron job: ${error.message}`);
       throw error;
@@ -98,7 +100,7 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
   }
 
   async scheduleCronJob(node: Node): Promise<void> {
-    await this.registerCronJob(node);
+    await this.registerCronJob(node, true);
   }
 
   async unscheduleCronJob(nodeId: string): Promise<void> {
