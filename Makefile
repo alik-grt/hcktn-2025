@@ -5,6 +5,8 @@ COMPOSE_FILE = docker-compose.dev.yml
 
 # Run application: build images without cache and start containers
 run:
+	@echo "Stopping existing containers..."
+	docker-compose -f $(COMPOSE_FILE) down || true
 	@echo "Building Docker images without cache..."
 	docker-compose -f $(COMPOSE_FILE) build --no-cache
 	@echo "Starting containers..."
