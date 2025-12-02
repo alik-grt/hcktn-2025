@@ -1,7 +1,7 @@
 services:
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
       target: development
     container_name: hackaton-backend-dev
@@ -12,33 +12,17 @@ services:
       NODE_ENV: development
       DATABASE_PATH: ${DATABASE_PATH:-/usr/src/app/database.sqlite}
     volumes:
-      - ./backend:/usr/src/app
+      - .:/usr/src/app
       - /usr/src/app/node_modules
       - database_data_dev:/usr/src/app
     command: npm run start:dev
     networks:
-      - hackaton-network-dev
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      target: development
-    container_name: hackaton-frontend-dev
-    restart: unless-stopped
-    ports:
-      - '${FRONTEND_PORT:-5173}:5173'
-    volumes:
-      - ./frontend:/app
-      - /app/node_modules
-    depends_on:
-      - backend
-    networks:
-      - hackaton-network-dev
+      - hackaton-backend-network-dev
 
 volumes:
   database_data_dev:
 
 networks:
-  hackaton-network-dev:
+  hackaton-backend-network-dev:
     driver: bridge
+

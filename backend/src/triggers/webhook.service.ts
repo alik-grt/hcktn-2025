@@ -5,11 +5,13 @@ import {
   OnModuleDestroy,
   Inject,
   forwardRef,
+  BadRequestException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Node } from '../database/entities/node.entity';
 import { ExecutionService } from '../execution/execution.service';
+import { WorkflowsService } from '../workflows/workflows.service';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -22,6 +24,7 @@ export class WebhookService implements OnModuleInit, OnModuleDestroy {
     private readonly nodeRepository: Repository<Node>,
     @Inject(forwardRef(() => ExecutionService))
     private readonly executionService: ExecutionService,
+    private readonly workflowsService: WorkflowsService,
   ) {}
 
   onModuleInit() {
@@ -114,6 +117,16 @@ export class WebhookService implements OnModuleInit, OnModuleDestroy {
     const webhook = this.webhookMap.get(webhookPath);
     if (!webhook) {
       throw new Error(`Webhook not found: ${webhookPath}`);
+    }
+
+    const workflow = await this.workflowsService.findOne(webhook.workflowId);
+    if (workflow.status !== 'active') {
+      this.logger.warn(
+        `Webhook ${webhookPath} triggered but workflow ${webhook.workflowId} is not active (status: ${workflow.status})`,
+      );
+      throw new BadRequestException(
+        `Workflow is not active. Current status: ${workflow.status}. Please activate the workflow first.`,
+      );
     }
 
     this.logger.log(`Triggering webhook: ${webhookPath} -> workflow ${webhook.workflowId}`);

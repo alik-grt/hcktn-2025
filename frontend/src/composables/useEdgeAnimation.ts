@@ -76,7 +76,8 @@ export function useEdgeAnimation(
       for (const [nodeId, currentStatus] of currentStatuses.entries()) {
         const previousStatus = previousNodeStatuses.value.get(nodeId) || 'idle';
 
-        if (previousStatus !== 'progress' && currentStatus === 'progress') {
+        // Start animation when node becomes 'passed' (success)
+        if (previousStatus !== 'passed' && currentStatus === 'passed') {
           const outgoingEdges = edges.value.filter((e) => e.sourceNodeId === nodeId);
           for (const edge of outgoingEdges) {
             startEdgeAnimation(edge.id, 1500);

@@ -47,11 +47,28 @@
     <div class="flex items-center gap-2">
       <button
         @click="$emit('run')"
-        class="flex h-9 items-center justify-center gap-2 rounded-lg border border-border-light dark:border-border-dark bg-card-light dark:bg-card-dark px-4 text-sm font-medium text-text-light-primary dark:text-text-dark-primary shadow-sm hover:bg-gray-50 dark:hover:bg-gray-800 disabled:opacity-50 disabled:cursor-not-allowed"
+        :class="[
+          'flex h-9 items-center justify-center gap-2 rounded-lg border px-4 text-sm font-medium shadow-sm disabled:opacity-50 disabled:cursor-not-allowed transition-colors',
+          workflow?.status === 'active'
+            ? 'border-red-300 dark:border-red-700 bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 hover:bg-red-100 dark:hover:bg-red-900/30'
+            : 'border-green-300 dark:border-green-700 bg-green-50 dark:bg-green-900/20 text-green-700 dark:text-green-300 hover:bg-green-100 dark:hover:bg-green-900/30',
+        ]"
         :disabled="running"
       >
-        <span class="material-symbols-outlined text-base">play_arrow</span>
-        {{ running ? 'Running...' : 'Run Test' }}
+        <span
+          v-if="workflow?.status === 'active'"
+          class="material-symbols-outlined text-base"
+        >
+          pause
+        </span>
+        <span v-else class="material-symbols-outlined text-base">play_arrow</span>
+        {{
+          running
+            ? 'Updating...'
+            : workflow?.status === 'active'
+              ? 'Stop Test'
+              : 'Run Test'
+        }}
       </button>
       <button
         @click="$emit('save')"

@@ -5,9 +5,14 @@ import { CronService } from './cron.service';
 import { WebhookController } from './webhook.controller';
 import { Node } from '../database/entities/node.entity';
 import { ExecutionModule } from '../execution/execution.module';
+import { WorkflowsModule } from '../workflows/workflows.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Node]), forwardRef(() => ExecutionModule)],
+  imports: [
+    TypeOrmModule.forFeature([Node]),
+    forwardRef(() => ExecutionModule),
+    forwardRef(() => WorkflowsModule),
+  ],
   controllers: [WebhookController],
   providers: [WebhookService, CronService],
   exports: [WebhookService, CronService],

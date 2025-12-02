@@ -32,10 +32,10 @@ export class Execution {
   })
   status: ExecutionStatus;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'simple-json', nullable: true })
   input: Record<string, any>;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'simple-json', nullable: true })
   output: Record<string, any>;
 
   @Column({ type: 'text', nullable: true })

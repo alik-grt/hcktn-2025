@@ -18,7 +18,7 @@ import { WebSocketModule } from '../websocket/websocket.module';
 @Module({
   imports: [
     TypeOrmModule.forFeature([Execution, ExecutionNode, Node, Edge]),
-    WorkflowsModule,
+    forwardRef(() => WorkflowsModule),
     WebSocketModule,
   ],
   controllers: [ExecutionController],

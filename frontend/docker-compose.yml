@@ -1,0 +1,19 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: production
+    container_name: hackaton-frontend
+    restart: unless-stopped
+    ports:
+      - '${FRONTEND_PORT:-80}:80'
+    environment:
+      BACKEND_URL: ${BACKEND_URL:-http://localhost:3000}
+    networks:
+      - hackaton-frontend-network
+
+networks:
+  hackaton-frontend-network:
+    driver: bridge
+

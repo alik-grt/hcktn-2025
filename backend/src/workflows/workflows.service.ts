@@ -1,9 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, Inject, forwardRef } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Workflow } from '../database/entities/workflow.entity';
 import { Node } from '../database/entities/node.entity';
 import { Edge } from '../database/entities/edge.entity';
+import { CronService } from '../triggers/cron.service';
 
 export type CreateWorkflowDto = {
   name: string;
@@ -22,6 +23,8 @@ export class WorkflowsService {
     private readonly nodeRepository: Repository<Node>,
     @InjectRepository(Edge)
     private readonly edgeRepository: Repository<Edge>,
+    @Inject(forwardRef(() => CronService))
+    private readonly cronService: CronService,
   ) {}
 
   async create(createWorkflowDto: CreateWorkflowDto): Promise<Workflow> {
@@ -49,8 +52,15 @@ export class WorkflowsService {
 
   async update(id: string, updateWorkflowDto: UpdateWorkflowDto): Promise<Workflow> {
     const workflow = await this.findOne(id);
+    const oldStatus = workflow.status;
     Object.assign(workflow, updateWorkflowDto);
-    return await this.workflowRepository.save(workflow);
+    const updatedWorkflow = await this.workflowRepository.save(workflow);
+
+    if (oldStatus === 'active' && updatedWorkflow.status === 'inactive') {
+      await this.cronService.stopAllCronJobsForWorkflow(id);
+    }
+
+    return updatedWorkflow;
   }
 
   async remove(id: string): Promise<void> {

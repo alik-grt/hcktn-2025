@@ -121,7 +121,6 @@
       >
       <select
         v-model="localNode.method"
-        @change="handleUpdate"
         class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
       >
         <option value="GET">GET</option>
@@ -136,7 +135,6 @@
       >
       <input
         v-model="localNode.url"
-        @input="handleUpdate"
         type="text"
         class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
       />
@@ -147,7 +145,6 @@
       >
       <textarea
         v-model="localNode.bodyTemplate"
-        @input="handleUpdate"
         rows="4"
         class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary/50"
       ></textarea>
@@ -158,7 +155,6 @@
       >
       <textarea
         v-model="templateJson"
-        @input="handleTemplateChange"
         rows="6"
         placeholder='{"username": "{{name}}", "isAdult": "{{age > 18}}"}'
         class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary/50"
@@ -170,7 +166,6 @@
       >
       <input
         v-model="localNode.name"
-        @input="handleUpdate"
         type="text"
         placeholder="Agent name"
         class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
@@ -182,7 +177,6 @@
       >
       <textarea
         v-model="configJson"
-        @input="handleConfigChange"
         rows="6"
         placeholder='{"model": "gpt-4", "temperature": 0.7}'
         class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary font-mono text-sm resize-y focus:outline-none focus:ring-2 focus:ring-primary/50"
@@ -194,7 +188,6 @@
       >
       <select
         v-model="delayType"
-        @change="handleDelayTypeChange"
         class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
       >
         <option value="ms">Delay (milliseconds)</option>
@@ -207,7 +200,6 @@
       >
       <input
         v-model.number="delayMs"
-        @input="handleDelayMsChange"
         type="number"
         min="0"
         placeholder="1000"
@@ -223,13 +215,41 @@
       >
       <input
         v-model="delayUntil"
-        @input="handleDelayUntilChange"
         type="datetime-local"
         class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
       />
       <small class="text-xs text-text-light-secondary dark:text-text-dark-secondary"
         >Wait until the specified date and time</small
       >
+    </div>
+    <div v-if="node.type === 'parent'" class="flex flex-col gap-2">
+      <label class="text-sm font-medium text-text-light-primary dark:text-text-dark-primary"
+        >Name</label
+      >
+      <input
+        v-model="localNode.name"
+        type="text"
+        placeholder="Parent node name"
+        class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
+      />
+    </div>
+    <div
+      v-if="
+        node.type === 'http' ||
+        node.type === 'transform' ||
+        node.type === 'agent' ||
+        node.type === 'delay' ||
+        node.type === 'parent'
+      "
+      class="flex gap-2 pt-2"
+    >
+      <button
+        type="button"
+        @click="handleSave"
+        class="flex-1 px-4 py-2 rounded-lg bg-green-500 dark:bg-green-600 text-white hover:bg-green-600 dark:hover:bg-green-700 text-sm font-medium transition-colors"
+      >
+        Save
+      </button>
     </div>
   </div>
 </template>
@@ -282,6 +302,43 @@ watch(
 
 const handleUpdate = () => {
   emit('update', { ...localNode.value });
+};
+
+const handleSave = () => {
+  if (localNode.value.type === 'transform') {
+    try {
+      localNode.value.template = JSON.parse(templateJson.value);
+    } catch (error) {
+      alert('Invalid JSON in template');
+      return;
+    }
+  }
+  if (localNode.value.type === 'agent') {
+    try {
+      localNode.value.config = JSON.parse(configJson.value);
+    } catch (error) {
+      alert('Invalid JSON in config');
+      return;
+    }
+  }
+  if (localNode.value.type === 'delay') {
+    if (!localNode.value.config) {
+      localNode.value.config = {};
+    }
+    if (delayType.value === 'ms') {
+      delete localNode.value.config.until;
+      localNode.value.config.delayMs = delayMs.value;
+    } else {
+      delete localNode.value.config.delayMs;
+      if (delayUntil.value) {
+        localNode.value.config.until = new Date(delayUntil.value).toISOString();
+      } else {
+        delete localNode.value.config.until;
+      }
+    }
+  }
+  // Parent node only needs name, which is already in localNode.value.name
+  handleUpdate();
 };
 
 const handleSubtypeChange = () => {
@@ -356,62 +413,6 @@ const copyWebhookUrl = async () => {
     await navigator.clipboard.writeText(webhookUrl.value);
     alert('Webhook URL copied to clipboard!');
   }
-};
-
-const handleTemplateChange = () => {
-  try {
-    localNode.value.template = JSON.parse(templateJson.value);
-    handleUpdate();
-  } catch (error) {
-    // Invalid JSON, ignore for now
-  }
-};
-
-const handleConfigChange = () => {
-  try {
-    localNode.value.config = JSON.parse(configJson.value);
-    handleUpdate();
-  } catch (error) {
-    // Invalid JSON, ignore for now
-  }
-};
-
-const handleDelayTypeChange = () => {
-  if (!localNode.value.config) {
-    localNode.value.config = {};
-  }
-  if (delayType.value === 'ms') {
-    delete localNode.value.config.until;
-    localNode.value.config.delayMs = delayMs.value;
-  } else {
-    delete localNode.value.config.delayMs;
-    if (delayUntil.value) {
-      localNode.value.config.until = new Date(delayUntil.value).toISOString();
-    }
-  }
-  handleUpdate();
-};
-
-const handleDelayMsChange = () => {
-  if (!localNode.value.config) {
-    localNode.value.config = {};
-  }
-  localNode.value.config.delayMs = delayMs.value;
-  delete localNode.value.config.until;
-  handleUpdate();
-};
-
-const handleDelayUntilChange = () => {
-  if (!localNode.value.config) {
-    localNode.value.config = {};
-  }
-  if (delayUntil.value) {
-    localNode.value.config.until = new Date(delayUntil.value).toISOString();
-  } else {
-    delete localNode.value.config.until;
-  }
-  delete localNode.value.config.delayMs;
-  handleUpdate();
 };
 
 onMounted(() => {

@@ -1,7 +1,7 @@
 services:
   backend:
     build:
-      context: ./backend
+      context: .
       dockerfile: Dockerfile
       target: production
     container_name: hackaton-backend
@@ -14,25 +14,12 @@ services:
     volumes:
       - database_data:/app
     networks:
-      - hackaton-network
-
-  frontend:
-    build:
-      context: ./frontend
-      dockerfile: Dockerfile
-      target: production
-    container_name: hackaton-frontend
-    restart: unless-stopped
-    ports:
-      - '${FRONTEND_PORT:-80}:80'
-    depends_on:
-      - backend
-    networks:
-      - hackaton-network
+      - hackaton-backend-network
 
 volumes:
   database_data:
 
 networks:
-  hackaton-network:
+  hackaton-backend-network:
     driver: bridge
+

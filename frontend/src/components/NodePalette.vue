@@ -42,11 +42,13 @@ type Props = {
 defineProps<Props>();
 
 const nodeTypes = [
+  { type: 'parent', label: 'Parent', icon: '📁' },
   { type: 'trigger', label: 'Trigger', icon: '⚡' },
   { type: 'http', label: 'HTTP', icon: '🌐' },
   { type: 'transform', label: 'Transform', icon: '🔄' },
   { type: 'agent', label: 'Agent', icon: '🤖' },
   { type: 'delay', label: 'Delay', icon: '⏱️' },
+  { type: 'note', label: 'Note', icon: '📝' },
 ];
 
 const handleDragStart = (event: DragEvent, nodeType: { type: string; label: string }) => {
@@ -57,44 +59,52 @@ const handleDragStart = (event: DragEvent, nodeType: { type: string; label: stri
 
 const getIcon = (type: string) => {
   const iconMap: Record<string, string> = {
+    parent: 'folder',
     trigger: 'webhook',
     http: 'http',
     transform: 'transform',
     agent: 'smart_toy',
     delay: 'schedule',
+    note: 'note',
   };
   return iconMap[type] || 'circle';
 };
 
 const getIconContainerClass = (type: string) => {
   const colorMap: Record<string, string> = {
+    parent: 'bg-gray-200 dark:bg-gray-700',
     trigger: 'bg-green-100 dark:bg-green-900',
     http: 'bg-blue-100 dark:bg-blue-900',
     transform: 'bg-purple-100 dark:bg-purple-900',
     agent: 'bg-blue-100 dark:bg-blue-900',
     delay: 'bg-orange-100 dark:bg-orange-900',
+    note: 'bg-yellow-100 dark:bg-yellow-900',
   };
   return `flex h-8 w-8 items-center justify-center rounded-md ${colorMap[type] || 'bg-gray-100 dark:bg-gray-800'}`;
 };
 
 const getIconClass = (type: string) => {
   const colorMap: Record<string, string> = {
+    parent: 'text-gray-600 dark:text-gray-300',
     trigger: 'text-green-600 dark:text-green-300',
     http: 'text-blue-600 dark:text-blue-300',
     transform: 'text-purple-600 dark:text-purple-300',
     agent: 'text-blue-600 dark:text-blue-300',
     delay: 'text-orange-600 dark:text-orange-300',
+    note: 'text-yellow-600 dark:text-yellow-300',
   };
   return `material-symbols-outlined text-base ${colorMap[type] || 'text-gray-600 dark:text-gray-300'}`;
 };
 
 const getNodeDescription = (type: string) => {
   const descriptions: Record<string, string> = {
+    parent: 'Container for grouping nodes',
     trigger: 'Trigger on event',
     http: 'Make HTTP request',
     transform: 'Transform data',
     agent: 'Process data with AI',
     delay: 'Wait before continuing',
+    note: 'Text note (cannot be connected)',
   };
   return descriptions[type] || '';
 };

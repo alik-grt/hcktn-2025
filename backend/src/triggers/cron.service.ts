@@ -11,6 +11,7 @@ import { Repository } from 'typeorm';
 import { CronJob } from 'cron';
 import { Node } from '../database/entities/node.entity';
 import { ExecutionService } from '../execution/execution.service';
+import { WorkflowsService } from '../workflows/workflows.service';
 
 @Injectable()
 export class CronService implements OnModuleInit, OnModuleDestroy {
@@ -22,6 +23,8 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
     private readonly nodeRepository: Repository<Node>,
     @Inject(forwardRef(() => ExecutionService))
     private readonly executionService: ExecutionService,
+    @Inject(forwardRef(() => WorkflowsService))
+    private readonly workflowsService: WorkflowsService,
   ) {}
 
   onModuleInit() {
@@ -77,6 +80,13 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
         async () => {
           this.logger.log(`Executing cron job for workflow ${node.workflowId}`);
           try {
+            const workflow = await this.workflowsService.findOne(node.workflowId);
+            if (workflow.status !== 'active') {
+              this.logger.warn(
+                `Cron job for workflow ${node.workflowId} skipped - workflow is not active (status: ${workflow.status})`,
+              );
+              return;
+            }
             await this.executionService.executeWorkflow(node.workflowId, {
               triggeredBy: 'cron',
               triggeredAt: new Date().toISOString(),
@@ -106,6 +116,28 @@ export class CronService implements OnModuleInit, OnModuleDestroy {
   async unscheduleCronJob(nodeId: string): Promise<void> {
     const jobId = `cron-${nodeId}`;
     this.stopCronJob(jobId);
+  }
+
+  async stopAllCronJobsForWorkflow(workflowId: string): Promise<void> {
+    this.logger.log(`Stopping all cron jobs for workflow ${workflowId}`);
+    try {
+      const cronNodes = await this.nodeRepository.find({
+        where: { type: 'trigger', subtype: 'cron', workflowId },
+      });
+      for (const node of cronNodes) {
+        const jobId = `cron-${node.id}`;
+        if (this.cronJobs.has(jobId)) {
+          this.stopCronJob(jobId);
+          if (node.config) {
+            node.config.cronActive = false;
+            await this.nodeRepository.save(node);
+          }
+        }
+      }
+      this.logger.log(`Stopped ${cronNodes.length} cron jobs for workflow ${workflowId}`);
+    } catch (error) {
+      this.logger.error(`Failed to stop cron jobs for workflow ${workflowId}: ${error.message}`);
+    }
   }
 
   private stopCronJob(jobId: string): void {

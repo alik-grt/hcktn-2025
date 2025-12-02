@@ -1,4 +1,4 @@
-import { ref, type Ref } from 'vue';
+import type { Ref } from 'vue';
 import { workflowsApi, type Edge, type Node, type CreateEdgeDto } from '../api/workflows';
 
 export function useEdgeManagement(edges: Ref<Edge[]>, nodes: Ref<Node[]>) {
@@ -17,7 +17,12 @@ export function useEdgeManagement(edges: Ref<Edge[]>, nodes: Ref<Node[]>) {
     try {
       await workflowsApi.deleteEdge(edgeId);
       edges.value = edges.value.filter((e: Edge) => e.id !== edgeId);
-    } catch (error) {
+    } catch (error: any) {
+      if (error.response?.status === 404) {
+        console.warn(`Edge ${edgeId} not found on server, removing from local state`);
+        edges.value = edges.value.filter((e: Edge) => e.id !== edgeId);
+        return;
+      }
       console.error('Failed to delete edge:', error);
       throw error;
     }

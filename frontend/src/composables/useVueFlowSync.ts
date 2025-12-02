@@ -1,8 +1,6 @@
 import { ref, watch, nextTick, type Ref } from 'vue';
-import { useVueFlow } from '@vue-flow/core';
 import type { Node as VueFlowNode, Edge as VueFlowEdge } from '@vue-flow/core';
 import type { Node, Edge } from '../api/workflows';
-// import { useEdgeAnimation } from './useEdgeAnimation';
 
 export function useVueFlowSync(
   nodes: Ref<Node[]>,
@@ -11,23 +9,20 @@ export function useVueFlowSync(
 ) {
   const vueFlowNodes = ref<VueFlowNode[]>([]);
   const vueFlowEdges = ref<VueFlowEdge[]>([]);
-  const vueFlowInstance = useVueFlow();
 
   const convertToVueFlowNodes = (nodesData: Node[]): VueFlowNode[] => {
     return nodesData.map((node) => ({
       id: node.id,
-      type: 'workflowNode',
+      type: node.type === 'parent' ? 'parent' : node.type === 'note' ? 'note' : 'workflowNode',
       position: node.position || { x: 0, y: 0 },
+      width: node.width,
+      height: node.height,
       data: node,
       draggable: true,
+      connectable: node.type !== 'parent' && node.type !== 'note', // Parent and note nodes are not connectable
+      resizable: node.type === 'parent', // Only parent nodes are resizable
     }));
   };
-
-  // const { isEdgeAnimated, getEdgeAnimationProgress } = useEdgeAnimation(
-  //   nodes,
-  //   edges,
-  //   getNodeStatus,
-  // );
 
   const convertToVueFlowEdges = (edgesData: Edge[]): VueFlowEdge[] => {
     const nodeIds = new Set(nodes.value.map((n: Node) => n.id));
@@ -64,20 +59,13 @@ export function useVueFlowSync(
       .map((edge) => {
         const sourceStatus = sourceNodeStatuses.get(edge.sourceNodeId) || 'idle';
         const isAnimated = sourceStatus === 'progress' || sourceStatus === 'passed';
-        // const hasParticleAnimation = isEdgeAnimated(edge.id);
-        // const animationProgress = hasParticleAnimation ? getEdgeAnimationProgress(edge.id) : 0;
 
         return {
           id: edge.id,
           source: edge.sourceNodeId,
           target: edge.targetNodeId,
           type: 'default',
-          // type: hasParticleAnimation ? 'animated' : 'default',
           animated: isAnimated,
-          // data: {
-          //   hasParticleAnimation,
-          //   animationProgress,
-          // },
           style: isAnimated
             ? {
                 stroke: sourceStatus === 'progress' ? '#007bff' : '#28a745',
@@ -126,6 +114,33 @@ export function useVueFlowSync(
               newNode.position = { x: currentPos.x, y: currentPos.y };
             }
           }
+
+          const currentWidth = (currentNode as VueFlowNode).width;
+          const currentHeight = (currentNode as VueFlowNode).height;
+          const newNodeWidth = newNode.width;
+          const newNodeHeight = newNode.height;
+
+          if (
+            currentWidth &&
+            typeof currentWidth === 'number' &&
+            currentHeight &&
+            typeof currentHeight === 'number'
+          ) {
+            const widthDiff = Math.abs(currentWidth - (newNodeWidth || 0));
+            const heightDiff = Math.abs(currentHeight - (newNodeHeight || 0));
+            if (widthDiff > 1 || heightDiff > 1) {
+              newNode.width = currentWidth;
+              newNode.height = currentHeight;
+            } else if (
+              newNodeWidth &&
+              newNodeHeight &&
+              Math.abs(currentWidth - newNodeWidth) < 0.1 &&
+              Math.abs(currentHeight - newNodeHeight) < 0.1
+            ) {
+              newNode.width = currentWidth;
+              newNode.height = currentHeight;
+            }
+          }
         }
       }
 
@@ -147,13 +162,6 @@ export function useVueFlowSync(
     { deep: true },
   );
 
-  // setInterval(() => {
-  //   const hasAnimatedEdges = vueFlowEdges.value.some((e) => e.data?.hasParticleAnimation);
-  //   if (hasAnimatedEdges) {
-  //     updateEdges();
-  //   }
-  // }, 50);
-
   const getVueFlowNodePosition = (nodeId: string) => {
     const vueFlowNode = vueFlowNodes.value.find((n) => n.id === nodeId);
     return vueFlowNode?.position;
@@ -162,7 +170,6 @@ export function useVueFlowSync(
   return {
     vueFlowNodes,
     vueFlowEdges,
-    vueFlowInstance,
     getVueFlowNodePosition,
   };
 }

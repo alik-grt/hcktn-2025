@@ -1,0 +1,22 @@
+services:
+  frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    container_name: hackaton-frontend-dev
+    restart: unless-stopped
+    ports:
+      - '${FRONTEND_PORT:-5173}:5173'
+    environment:
+      VITE_API_URL: ${VITE_API_URL:-http://localhost:3000}
+    volumes:
+      - .:/app
+      - /app/node_modules
+    networks:
+      - hackaton-frontend-network-dev
+
+networks:
+  hackaton-frontend-network-dev:
+    driver: bridge
+

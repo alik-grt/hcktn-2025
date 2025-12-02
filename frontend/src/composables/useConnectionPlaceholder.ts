@@ -1,8 +1,10 @@
 import { ref, type Ref } from 'vue';
-import { useVueFlow } from '@vue-flow/core';
 import type { Workflow } from '../api/workflows';
 
-export function useConnectionPlaceholder(workflow: Ref<Workflow | null>) {
+export function useConnectionPlaceholder(
+  workflow: Ref<Workflow | null>,
+  vueFlowInstance: Ref<any>,
+) {
   const placeholderVisible = ref(false);
   const placeholderPosition = ref({ x: 0, y: 0 });
   const nodeSelectMenuVisible = ref(false);
@@ -10,8 +12,6 @@ export function useConnectionPlaceholder(workflow: Ref<Workflow | null>) {
   const pendingConnectionSource = ref<string | null>(null);
   const isConnectionInProgress = ref(false);
   const lastConnectionSource = ref<string | null>(null);
-
-  const vueFlowInstance = useVueFlow();
 
   const showPlaceholder = (position: { x: number; y: number }, sourceNodeId: string) => {
     placeholderPosition.value = position;
@@ -56,9 +56,9 @@ export function useConnectionPlaceholder(workflow: Ref<Workflow | null>) {
       return;
     }
 
-    if (canvasWrapperRef) {
+    if (canvasWrapperRef && vueFlowInstance.value) {
       const rect = canvasWrapperRef.getBoundingClientRect();
-      const position = vueFlowInstance.project({
+      const position = vueFlowInstance.value.project({
         x: event.clientX - rect.left,
         y: event.clientY - rect.top,
       });

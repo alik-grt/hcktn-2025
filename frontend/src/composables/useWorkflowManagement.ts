@@ -143,6 +143,23 @@ export function useWorkflowManagement() {
     }
   };
 
+  const toggleWorkflowStatus = async () => {
+    if (!workflowId.value || !workflow.value) {
+      return;
+    }
+    running.value = true;
+    try {
+      const newStatus = workflow.value.status === 'active' ? 'inactive' : 'active';
+      workflow.value = await workflowsApi.update(workflow.value.id, {
+        status: newStatus,
+      });
+    } catch (error) {
+      console.error('Failed to toggle workflow status:', error);
+    } finally {
+      running.value = false;
+    }
+  };
+
   const runWorkflow = async () => {
     if (!workflowId.value || !workflow.value) {
       return;
@@ -176,6 +193,7 @@ export function useWorkflowManagement() {
     loadWorkflow,
     saveWorkflow,
     runWorkflow,
+    toggleWorkflowStatus,
     resetWorkflow,
     updateWorkflowName,
   };

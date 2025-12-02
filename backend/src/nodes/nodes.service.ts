@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Node } from '../database/entities/node.entity';
@@ -8,10 +8,12 @@ import { WebhookService } from '../triggers/webhook.service';
 import { CronService } from '../triggers/cron.service';
 
 export type CreateNodeDto = {
-  type: 'trigger' | 'http' | 'transform' | 'agent';
+  type: 'parent' | 'trigger' | 'http' | 'transform' | 'agent' | 'delay' | 'note';
   subtype?: 'manual' | 'webhook' | 'cron';
   workflowId: string;
   position?: { x: number; y: number };
+  width?: number;
+  height?: number;
   config?: Record<string, any>;
   method?: string;
   url?: string;
@@ -19,6 +21,7 @@ export type CreateNodeDto = {
   bodyTemplate?: string;
   template?: Record<string, any>;
   name?: string;
+  parentId?: string;
 };
 
 export type UpdateNodeDto = Partial<CreateNodeDto>;
@@ -31,6 +34,8 @@ export type CreateEdgeDto = {
 
 @Injectable()
 export class NodesService {
+  private readonly logger = new Logger(NodesService.name);
+
   constructor(
     @InjectRepository(Node)
     private readonly nodeRepository: Repository<Node>,
@@ -112,6 +117,15 @@ export class NodesService {
     if (updateNodeDto.name !== undefined) {
       node.name = updateNodeDto.name;
     }
+    if (updateNodeDto.width !== undefined) {
+      node.width = updateNodeDto.width;
+    }
+    if (updateNodeDto.height !== undefined) {
+      node.height = updateNodeDto.height;
+    }
+    if (updateNodeDto.parentId !== undefined) {
+      node.parentId = updateNodeDto.parentId;
+    }
 
     console.log('NodesService.update after assign:', { id, position: node.position });
     const savedNode = await this.nodeRepository.save(node);
@@ -167,11 +181,19 @@ export class NodesService {
   }
 
   async createEdge(createEdgeDto: CreateEdgeDto): Promise<Edge> {
+    this.logger.log(
+      `Creating edge: ${createEdgeDto.sourceNodeId} -> ${createEdgeDto.targetNodeId} in workflow ${createEdgeDto.workflowId}`,
+    );
     await this.workflowsService.findOne(createEdgeDto.workflowId);
-    await this.findOne(createEdgeDto.sourceNodeId);
-    await this.findOne(createEdgeDto.targetNodeId);
+    const sourceNode = await this.findOne(createEdgeDto.sourceNodeId);
+    const targetNode = await this.findOne(createEdgeDto.targetNodeId);
+    this.logger.debug(
+      `Source node: ${sourceNode.id} (${sourceNode.type}), Target node: ${targetNode.id} (${targetNode.type})`,
+    );
     const edge = this.edgeRepository.create(createEdgeDto);
-    return await this.edgeRepository.save(edge);
+    const savedEdge = await this.edgeRepository.save(edge);
+    this.logger.log(`Edge created successfully: ${savedEdge.id}`);
+    return savedEdge;
   }
 
   async getEdges(workflowId: string): Promise<Edge[]> {
@@ -181,11 +203,17 @@ export class NodesService {
   }
 
   async removeEdge(id: string): Promise<void> {
+    this.logger.log(`Removing edge: ${id}`);
     const edge = await this.edgeRepository.findOne({ where: { id } });
     if (!edge) {
+      this.logger.warn(`Edge with ID ${id} not found`);
       throw new NotFoundException(`Edge with ID ${id} not found`);
     }
+    this.logger.debug(
+      `Edge found: ${edge.sourceNodeId} -> ${edge.targetNodeId} in workflow ${edge.workflowId}`,
+    );
     await this.edgeRepository.remove(edge);
+    this.logger.log(`Edge ${id} removed successfully`);
   }
 
   async getWebhookInfo(nodeId: string): Promise<{ path: string; url: string } | null> {
@@ -197,6 +225,12 @@ export class NodesService {
     const node = await this.findOne(id);
     if (node.type !== 'trigger' || node.subtype !== 'cron') {
       throw new BadRequestException('Node is not a cron trigger');
+    }
+    const workflow = await this.workflowsService.findOne(node.workflowId);
+    if (workflow.status !== 'active') {
+      throw new BadRequestException(
+        'Workflow must be active before starting cron job. Please activate the workflow first.',
+      );
     }
     const cronExpression = node.config?.cronExpression;
     if (!cronExpression) {

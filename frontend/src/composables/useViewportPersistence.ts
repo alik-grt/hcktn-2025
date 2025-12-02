@@ -1,6 +1,5 @@
 import { ref, watch, type Ref } from 'vue';
 import { useDebounceFn } from '@vueuse/core';
-import { useVueFlow } from '@vue-flow/core';
 
 type ViewportState = {
   x: number;
@@ -69,25 +68,17 @@ const loadViewportFromStorage = (workflowId: string | null): ViewportState | nul
   return null;
 };
 
-export function useViewportPersistence(
-  vueFlowInstance: ReturnType<typeof useVueFlow> | null,
-  workflowId: Ref<string | null>,
-) {
+export function useViewportPersistence(vueFlowInstance: Ref<any>, workflowId: Ref<string | null>) {
   const isRestoringViewport = ref(false);
   const hasRestoredViewport = ref(false);
 
   const saveViewport = useDebounceFn(() => {
-    if (!vueFlowInstance || !workflowId.value || isRestoringViewport.value) {
-      return;
-    }
-
-    const getViewport = vueFlowInstance.getViewport;
-    if (!getViewport || typeof getViewport !== 'function') {
+    if (!vueFlowInstance.value || !workflowId.value || isRestoringViewport.value) {
       return;
     }
 
     try {
-      const viewport = getViewport();
+      const viewport = vueFlowInstance.value.getViewport();
       if (
         viewport &&
         isValidViewportValue(viewport.x) &&
@@ -108,17 +99,16 @@ export function useViewportPersistence(
   }, 500);
 
   const restoreViewport = async (): Promise<boolean> => {
-    if (!vueFlowInstance || !workflowId.value || hasRestoredViewport.value) {
+    if (!vueFlowInstance.value || !workflowId.value) {
       return false;
+    }
+
+    if (hasRestoredViewport.value) {
+      return true;
     }
 
     const savedViewport = loadViewportFromStorage(workflowId.value);
     if (!savedViewport) {
-      return false;
-    }
-
-    const setViewport = vueFlowInstance.setViewport;
-    if (!setViewport || typeof setViewport !== 'function') {
       return false;
     }
 
@@ -135,7 +125,7 @@ export function useViewportPersistence(
       }
 
       isRestoringViewport.value = true;
-      setViewport(
+      vueFlowInstance.value.setViewport(
         {
           x: savedViewport.x,
           y: savedViewport.y,
@@ -171,8 +161,10 @@ export function useViewportPersistence(
 
   watch(
     () => workflowId.value,
-    () => {
-      hasRestoredViewport.value = false;
+    (newId, oldId) => {
+      if (newId !== oldId) {
+        hasRestoredViewport.value = false;
+      }
     },
   );
 

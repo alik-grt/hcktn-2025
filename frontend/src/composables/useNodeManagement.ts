@@ -24,6 +24,8 @@ export function useNodeManagement(
         subtype: node.subtype,
         workflowId: node.workflowId,
         position: node.position,
+        width: node.width,
+        height: node.height,
         config: node.config,
         method: node.method,
         url: node.url,
@@ -31,6 +33,7 @@ export function useNodeManagement(
         bodyTemplate: node.bodyTemplate,
         template: node.template,
         name: node.name,
+        parentId: node.parentId,
       };
       const updated = await workflowsApi.updateNode(node.id, updateData);
       const index = nodes.value.findIndex((n: Node) => n.id === node.id);
@@ -58,7 +61,14 @@ export function useNodeManagement(
 
     if (posDiff > 0.5) {
       try {
-        await workflowsApi.updateNode(nodeId, { position: { x: position.x, y: position.y } });
+        const updated = await workflowsApi.updateNode(nodeId, { position: { x: position.x, y: position.y } });
+        const index = nodes.value.findIndex((n: Node) => n.id === nodeId);
+        if (index !== -1) {
+          nodes.value[index] = { ...nodes.value[index], position: updated.position };
+        }
+        if (selectedNode.value?.id === nodeId) {
+          selectedNode.value = { ...selectedNode.value, position: updated.position };
+        }
       } catch (error) {
         console.error(`Failed to update node position for ${nodeId}:`, error);
       }

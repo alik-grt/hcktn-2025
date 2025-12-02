@@ -1,4 +1,10 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  BadRequestException,
+  Inject,
+  forwardRef,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { Execution } from '../database/entities/execution.entity';
@@ -14,11 +20,17 @@ export class ExecutionService {
     @InjectRepository(ExecutionNode)
     private readonly executionNodeRepository: Repository<ExecutionNode>,
     private readonly executor: Executor,
+    @Inject(forwardRef(() => WorkflowsService))
     private readonly workflowsService: WorkflowsService,
   ) {}
 
   async executeWorkflow(workflowId: string, input: Record<string, any> = {}): Promise<Execution> {
-    await this.workflowsService.findOne(workflowId);
+    const workflow = await this.workflowsService.findOne(workflowId);
+    if (workflow.status !== 'active') {
+      throw new BadRequestException(
+        `Workflow is not active. Current status: ${workflow.status}. Please activate the workflow first.`,
+      );
+    }
     return await this.executor.executeWorkflow(workflowId, input);
   }
 

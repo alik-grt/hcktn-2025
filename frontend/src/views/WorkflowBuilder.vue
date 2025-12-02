@@ -63,7 +63,7 @@
         :running="running"
         @go-back="goBack"
         @save="handleSave"
-        @run="runWorkflow"
+        @run="toggleWorkflowStatus"
         @update-name="handleUpdateName"
       />
       <div class="flex flex-1 overflow-hidden">
@@ -83,7 +83,6 @@
           @nodes-change="onNodesChange"
           @edges-change="onEdgesChange"
           @node-click="onNodeClick"
-          @node-double-click="onNodeDoubleClick"
           @pane-click="onPaneClick"
           @drop="onDrop"
           @show-node-select-menu="showNodeSelectMenu"
@@ -96,6 +95,8 @@
           @move-end="onViewportChange"
           @zoom="onViewportChange"
           @zoom-change="onViewportChange"
+          @vue-flow-instance="onVueFlowInstanceReceived"
+          @node-delete="onNodeDelete"
         />
       </div>
     </main>
@@ -142,6 +143,7 @@ const {
   loadWorkflow,
   saveWorkflow,
   runWorkflow,
+  toggleWorkflowStatus,
   resetWorkflow,
   updateWorkflowName,
 } = useWorkflowManagement();
@@ -178,10 +180,32 @@ const getDebouncedUpdateForNode = (nodeId: string) => {
   if (!nodePositionDebouncers.has(nodeId)) {
     const debouncedFn = useDebounceFn((nodeId: string, position: { x: number; y: number }) => {
       updateNodePosition(nodeId, position);
-    }, 300);
+    }, 500);
     nodePositionDebouncers.set(nodeId, debouncedFn);
   }
   return nodePositionDebouncers.get(nodeId)!;
+};
+
+const nodeDimensionDebouncers = new Map<
+  string,
+  (nodeId: string, width: number, height: number) => void
+>();
+
+const getDebouncedUpdateDimensionsForNode = (nodeId: string) => {
+  if (!nodeDimensionDebouncers.has(nodeId)) {
+    const debouncedFn = useDebounceFn((nodeId: string, width: number, height: number) => {
+      const node = nodes.value.find((n: Node) => n.id === nodeId);
+      if (node) {
+        updateNode({
+          ...node,
+          width,
+          height,
+        });
+      }
+    }, 300);
+    nodeDimensionDebouncers.set(nodeId, debouncedFn);
+  }
+  return nodeDimensionDebouncers.get(nodeId)!;
 };
 
 const { createEdge, deleteEdge, cleanupOrphanedEdges, getConnectedNodeIds } = useEdgeManagement(
@@ -189,10 +213,12 @@ const { createEdge, deleteEdge, cleanupOrphanedEdges, getConnectedNodeIds } = us
   nodes,
 );
 
-const { vueFlowNodes, vueFlowEdges, vueFlowInstance } = useVueFlowSync(nodes, edges, getNodeStatus);
+const canvasVueFlowInstance = ref<any>(null);
 
-const { saveViewport, restoreViewport, clearViewport, isRestoringViewport, hasRestoredViewport } =
-  useViewportPersistence(vueFlowInstance, workflowId);
+const { vueFlowNodes, vueFlowEdges } = useVueFlowSync(nodes, edges, getNodeStatus);
+
+const { saveViewport, restoreViewport, isRestoringViewport, hasRestoredViewport } =
+  useViewportPersistence(canvasVueFlowInstance, workflowId);
 
 const {
   placeholderVisible,
@@ -206,14 +232,16 @@ const {
   handleConnectStart,
   handleConnectEnd,
   handleConnect,
-} = useConnectionPlaceholder(workflow);
+} = useConnectionPlaceholder(workflow, canvasVueFlowInstance);
 
 const nodeTypes = [
+  { type: 'parent', label: 'Parent', icon: '📁' },
   { type: 'trigger', label: 'Trigger', icon: '⚡' },
   { type: 'http', label: 'HTTP', icon: '🌐' },
   { type: 'transform', label: 'Transform', icon: '🔄' },
   { type: 'agent', label: 'Agent', icon: '🤖' },
   { type: 'delay', label: 'Delay', icon: '⏱️' },
+  { type: 'note', label: 'Note', icon: '📝' },
 ];
 
 const handleNodeRun = async (node: Node) => {
@@ -221,14 +249,23 @@ const handleNodeRun = async (node: Node) => {
     return;
   }
   if (node.type === 'trigger' && node.subtype === 'cron') {
+    if (workflow.value.status !== 'active') {
+      alert('Please activate the workflow first before starting the cron job.');
+      return;
+    }
     try {
       await workflowsApi.startCron(node.id);
       const updatedNode = nodes.value.find((n: Node) => n.id === node.id);
       if (updatedNode && updatedNode.config) {
         updatedNode.config.cronActive = true;
       }
-    } catch (error) {
-      console.error('Failed to start cron job:', error);
+    } catch (error: any) {
+      if (error.response?.status === 400 && error.response?.data?.message) {
+        alert(error.response.data.message);
+      } else {
+        console.error('Failed to start cron job:', error);
+        alert('Failed to start cron job. Please try again.');
+      }
     }
     return;
   }
@@ -254,6 +291,8 @@ const handleNodePause = async (node: Node) => {
 
 provide('onNodeRun', handleNodeRun);
 provide('onNodePause', handleNodePause);
+provide('workflowStatus', () => workflow.value?.status || null);
+provide('selectedNode', selectedNode);
 
 const onDrop = async (event: DragEvent) => {
   event.preventDefault();
@@ -262,14 +301,25 @@ const onDrop = async (event: DragEvent) => {
     return;
   }
 
-  const position = vueFlowInstance.project({ x: event.clientX, y: event.clientY });
+  if (!canvasVueFlowInstance.value) {
+    return;
+  }
+  const position = canvasVueFlowInstance.value.project({ x: event.clientX, y: event.clientY });
 
   try {
-    await createNode({
+    const nodeData: any = {
       type: nodeType as any,
       workflowId: workflow.value.id,
       position: position,
-    });
+    };
+
+    // Set default dimensions for parent nodes
+    if (nodeType === 'parent') {
+      nodeData.width = 400;
+      nodeData.height = 200;
+    }
+
+    await createNode(nodeData);
   } catch (error) {
     console.error('Failed to create node:', error);
   }
@@ -281,6 +331,22 @@ const onConnectStart = (event: any) => {
 
 const onConnect = async (connection: Connection) => {
   if (!workflow.value || !connection.source || !connection.target) {
+    return;
+  }
+
+  // Prevent connections to/from parent nodes and note nodes
+  const sourceNode = nodes.value.find((n: Node) => n.id === connection.source);
+  const targetNode = nodes.value.find((n: Node) => n.id === connection.target);
+
+  if (sourceNode?.type === 'parent' || targetNode?.type === 'parent') {
+    console.warn('Cannot connect to or from parent nodes');
+    handleConnect();
+    return;
+  }
+
+  if (sourceNode?.type === 'note' || targetNode?.type === 'note') {
+    console.warn('Cannot connect to or from note nodes');
+    handleConnect();
     return;
   }
 
@@ -313,11 +379,19 @@ const onNodeTypeSelect = async (nodeType: string) => {
   }
 
   try {
-    const newNode = await createNode({
+    const nodeData: any = {
       type: nodeType as any,
       workflowId: workflow.value.id,
       position: placeholderPosition.value,
-    });
+    };
+
+    // Set default dimensions for parent nodes
+    if (nodeType === 'parent') {
+      nodeData.width = 400;
+      nodeData.height = 200;
+    }
+
+    const newNode = await createNode(nodeData);
 
     await createEdge({
       workflowId: workflow.value.id,
@@ -346,8 +420,50 @@ const onNodesChange = (changes: any[]) => {
         typeof position.x === 'number' &&
         typeof position.y === 'number'
       ) {
+        const vueFlowNode = vueFlowNodes.value.find((n) => n.id === change.id);
+        if (vueFlowNode) {
+          vueFlowNode.position = { x: position.x, y: position.y };
+        }
         const debouncedUpdate = getDebouncedUpdateForNode(change.id);
         debouncedUpdate(change.id, { x: position.x, y: position.y });
+
+        if (canvasVueFlowInstance.value && canvasVueFlowInstance.value.getIntersectingNodes) {
+          const movedNode = vueFlowNodes.value.find((n) => n.id === change.id);
+          if (movedNode && movedNode.type !== 'parent') {
+            const intersectingNodes = canvasVueFlowInstance.value.getIntersectingNodes(movedNode);
+            const parentNode = intersectingNodes.find((n: any) => n.type === 'parent');
+            if (parentNode) {
+              const node = nodes.value.find((n: Node) => n.id === change.id);
+              if (node && node.parentId !== parentNode.id) {
+                updateNode({
+                  ...node,
+                  parentId: parentNode.id,
+                });
+              }
+            } else {
+              const node = nodes.value.find((n: Node) => n.id === change.id);
+              if (node && node.parentId) {
+                updateNode({
+                  ...node,
+                  parentId: undefined,
+                });
+              }
+            }
+          }
+        }
+      }
+    } else if (change.type === 'dimensions') {
+      if (change.dimensions) {
+        const { width, height } = change.dimensions;
+        if (typeof width === 'number' && typeof height === 'number') {
+          const vueFlowNode = vueFlowNodes.value.find((n) => n.id === change.id);
+          if (vueFlowNode) {
+            vueFlowNode.width = width;
+            vueFlowNode.height = height;
+          }
+          const debouncedUpdate = getDebouncedUpdateDimensionsForNode(change.id);
+          debouncedUpdate(change.id, width, height);
+        }
       }
     }
   }
@@ -370,8 +486,8 @@ const onPaneClick = () => {
   selectedNode.value = null;
 };
 
-const onNodeDoubleClick = (event: { node: VueFlowNode }) => {
-  deleteNode(event.node.id);
+const onNodeDelete = async (nodeId: string) => {
+  await deleteNode(nodeId);
 };
 
 const updateNode = async (node: Node) => {
@@ -471,7 +587,7 @@ const focusOnTriggerNode = async () => {
     return;
   }
 
-  if (!vueFlowInstance) {
+  if (!canvasVueFlowInstance.value) {
     return;
   }
 
@@ -493,15 +609,15 @@ const focusOnTriggerNode = async () => {
   try {
     await nextTick();
 
-    if (vueFlowInstance.fitView && typeof vueFlowInstance.fitView === 'function') {
-      vueFlowInstance.fitView({
+    if (canvasVueFlowInstance.value.fitView) {
+      canvasVueFlowInstance.value.fitView({
         nodes: [triggerNode.id],
         padding: 0.2,
         duration: 400,
       });
       hasFocusedOnTrigger.value = true;
-    } else if (vueFlowInstance.setCenter && typeof vueFlowInstance.setCenter === 'function') {
-      vueFlowInstance.setCenter(position.x, position.y, {
+    } else if (canvasVueFlowInstance.value.setCenter) {
+      canvasVueFlowInstance.value.setCenter(position.x, position.y, {
         zoom: 1.2,
         duration: 400,
       });
@@ -512,26 +628,53 @@ const focusOnTriggerNode = async () => {
   }
 };
 
+const onVueFlowInstanceReceived = (instance: any) => {
+  if (instance) {
+    canvasVueFlowInstance.value = instance;
+  }
+};
+
 const onVueFlowInit = async () => {
   await nextTick();
+  await nextTick();
 
-  const restored = await restoreViewport();
-  if (!restored) {
-    if (!hasFocusedOnTrigger.value) {
+  if (canvasVueFlowInstance.value && workflowId.value) {
+    const restored = await restoreViewport();
+    if (!restored && !hasFocusedOnTrigger.value) {
       setTimeout(() => {
         focusOnTriggerNode();
-      }, 100);
+      }, 500);
+    } else if (restored) {
+      hasFocusedOnTrigger.value = true;
     }
-  } else {
-    hasFocusedOnTrigger.value = true;
   }
 };
 
 const onViewportChange = () => {
-  if (!isRestoringViewport.value) {
+  if (!isRestoringViewport.value && canvasVueFlowInstance.value) {
     saveViewport();
   }
 };
+
+watch(
+  () => canvasVueFlowInstance.value,
+  async (newInstance, oldInstance) => {
+    if (newInstance && !oldInstance && workflowId.value) {
+      await nextTick();
+      await nextTick();
+      if (!hasRestoredViewport.value) {
+        const restored = await restoreViewport();
+        if (!restored && !hasFocusedOnTrigger.value) {
+          setTimeout(() => {
+            focusOnTriggerNode();
+          }, 500);
+        } else if (restored) {
+          hasFocusedOnTrigger.value = true;
+        }
+      }
+    }
+  },
+);
 
 watch(
   () => nodeStatuses.value,
@@ -599,13 +742,16 @@ watch(
           await cleanupOrphanedEdges();
           connect();
           await nextTick();
-          const restored = await restoreViewport();
-          if (!restored) {
-            setTimeout(() => {
-              focusOnTriggerNode();
-            }, 300);
-          } else {
-            hasFocusedOnTrigger.value = true;
+          await nextTick();
+          if (canvasVueFlowInstance.value) {
+            const restored = await restoreViewport();
+            if (!restored && !hasFocusedOnTrigger.value) {
+              setTimeout(() => {
+                focusOnTriggerNode();
+              }, 500);
+            } else if (restored) {
+              hasFocusedOnTrigger.value = true;
+            }
           }
         }
       }
@@ -620,13 +766,16 @@ onMounted(async () => {
     await cleanupOrphanedEdges();
     connect();
     await nextTick();
-    const restored = await restoreViewport();
-    if (!restored) {
-      setTimeout(() => {
-        focusOnTriggerNode();
-      }, 300);
-    } else {
-      hasFocusedOnTrigger.value = true;
+    await nextTick();
+    if (canvasVueFlowInstance.value) {
+      const restored = await restoreViewport();
+      if (!restored && !hasFocusedOnTrigger.value) {
+        setTimeout(() => {
+          focusOnTriggerNode();
+        }, 500);
+      } else if (restored) {
+        hasFocusedOnTrigger.value = true;
+      }
     }
   }
 });

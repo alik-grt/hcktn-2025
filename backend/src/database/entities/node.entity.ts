@@ -3,13 +3,14 @@ import {
   PrimaryGeneratedColumn,
   Column,
   ManyToOne,
+  OneToMany,
   JoinColumn,
   CreateDateColumn,
   UpdateDateColumn,
 } from 'typeorm';
 import { Workflow } from './workflow.entity';
 
-export type NodeType = 'trigger' | 'http' | 'transform' | 'agent' | 'delay';
+export type NodeType = 'parent' | 'trigger' | 'http' | 'transform' | 'agent' | 'delay' | 'note';
 export type TriggerSubtype = 'manual' | 'webhook' | 'cron';
 export type NodeStatus = 'idle' | 'progress' | 'passed' | 'error';
 
@@ -31,10 +32,26 @@ export class Node {
   @JoinColumn({ name: 'workflowId' })
   workflow: Workflow;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'uuid', nullable: true })
+  parentId: string;
+
+  @ManyToOne(() => Node, (node) => node.children, { onDelete: 'SET NULL', nullable: true })
+  @JoinColumn({ name: 'parentId' })
+  parent: Node;
+
+  @OneToMany(() => Node, (node) => node.parent)
+  children: Node[];
+
+  @Column({ type: 'simple-json', nullable: true })
   position: { x: number; y: number };
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'float', nullable: true })
+  width: number;
+
+  @Column({ type: 'float', nullable: true })
+  height: number;
+
+  @Column({ type: 'simple-json', nullable: true })
   config: Record<string, any>;
 
   @Column({ type: 'varchar', length: 20, nullable: true })
@@ -43,13 +60,13 @@ export class Node {
   @Column({ type: 'text', nullable: true })
   url: string;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'simple-json', nullable: true })
   headers: Record<string, string>;
 
   @Column({ type: 'text', nullable: true })
   bodyTemplate: string;
 
-  @Column({ type: 'jsonb', nullable: true })
+  @Column({ type: 'simple-json', nullable: true })
   template: Record<string, any>;
 
   @Column({ type: 'varchar', length: 255, nullable: true })
