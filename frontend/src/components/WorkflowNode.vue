@@ -227,13 +227,47 @@
         v-if="data.type !== 'trigger'"
         type="target"
         :position="Position.Left"
-        :style="{ background: '#10B981', width: '8px', height: '8px', border: '2px solid white' }"
+        :style="{ background: '#10B981', width: '12px', height: '12px', border: '3px solid white' }"
       />
-      <Handle
-        type="source"
-        :position="Position.Right"
-        :style="{ background: '#4F46E5', width: '8px', height: '8px', border: '2px solid white' }"
-      />
+      <template v-if="data.type === 'if'">
+        <Handle
+          id="condition1"
+          type="source"
+          :position="Position.Right"
+          class="if-handle-condition1"
+          :style="{ background: '#10B981', width: '12px', height: '12px', border: '3px solid white' }"
+        />
+        <Handle
+          id="condition2"
+          type="source"
+          :position="Position.Right"
+          class="if-handle-condition2"
+          :style="{ background: '#3B82F6', width: '12px', height: '12px', border: '3px solid white' }"
+        />
+        <Handle
+          id="else"
+          type="source"
+          :position="Position.Right"
+          class="if-handle-else"
+          :style="{ background: '#EF4444', width: '12px', height: '12px', border: '3px solid white' }"
+        />
+      </template>
+      <template v-else>
+        <Handle
+          id="output1"
+          type="source"
+          :position="Position.Right"
+          class="source-handle-1"
+          :style="{ background: '#4F46E5', width: '12px', height: '12px', border: '3px solid white' }"
+        />
+        <Handle
+          id="output2"
+          type="source"
+          :position="Position.Right"
+          class="source-handle-2"
+          :style="{ background: '#4F46E5', width: '12px', height: '12px', border: '3px solid white' }"
+        />
+      </template>
     </template>
   </div>
 </template>
@@ -461,6 +495,7 @@ const getIcon = () => {
     transform: 'transform',
     agent: 'smart_toy',
     delay: 'schedule',
+    if: 'call_split',
   };
   return iconMap[props.data.type] || 'circle';
 };
@@ -472,6 +507,7 @@ const getIconContainerClass = () => {
     transform: 'bg-purple-100 dark:bg-purple-900',
     agent: 'bg-blue-100 dark:bg-blue-900',
     delay: 'bg-orange-100 dark:bg-orange-900',
+    if: 'bg-pink-100 dark:bg-pink-900',
   };
   return `flex h-10 w-10 items-center justify-center rounded-lg ${colorMap[props.data.type] || 'bg-gray-100 dark:bg-gray-800'}`;
 };
@@ -483,6 +519,7 @@ const getIconClass = () => {
     transform: 'text-purple-600 dark:text-purple-300',
     agent: 'text-blue-600 dark:text-blue-300',
     delay: 'text-orange-600 dark:text-orange-300',
+    if: 'text-pink-600 dark:text-pink-300',
   };
   return `material-symbols-outlined ${colorMap[props.data.type] || 'text-gray-600 dark:text-gray-300'}`;
 };
@@ -503,6 +540,8 @@ const getNodeTitle = () => {
     return 'Transform Data';
   } else if (props.data.type === 'delay') {
     return 'Delay';
+  } else if (props.data.type === 'if') {
+    return 'If Condition';
   }
   return props.data.type;
 };
@@ -523,6 +562,8 @@ const getNodeSubtitle = () => {
     return 'Transform data';
   } else if (props.data.type === 'delay') {
     return 'Wait before continuing';
+  } else if (props.data.type === 'if') {
+    return 'Conditional branching';
   }
   return '';
 };
@@ -546,6 +587,17 @@ const getNodeContent = () => {
       return `Wait until ${new Date(props.data.config.until).toLocaleString()}`;
     }
     return 'Configure delay';
+  } else if (props.data.type === 'if') {
+    const condition1 = props.data.config?.condition1;
+    const condition2 = props.data.config?.condition2;
+    if (condition1 && condition2) {
+      return `C1: ${condition1} | C2: ${condition2}`;
+    } else if (condition1) {
+      return `C1: ${condition1}`;
+    } else if (condition2) {
+      return `C2: ${condition2}`;
+    }
+    return 'Configure conditions';
   }
   return '';
 };
@@ -608,5 +660,25 @@ const getNodeContent = () => {
 
 :deep(.vue-flow__node[data-id] .note-node) {
   min-width: 200px;
+}
+
+:deep(.if-handle-condition1) {
+  top: 30% !important;
+}
+
+:deep(.if-handle-condition2) {
+  top: 50% !important;
+}
+
+:deep(.if-handle-else) {
+  top: 70% !important;
+}
+
+:deep(.source-handle-1) {
+  top: 40% !important;
+}
+
+:deep(.source-handle-2) {
+  top: 60% !important;
 }
 </style>

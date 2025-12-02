@@ -9,21 +9,28 @@ export function useVueFlowSync(
 ) {
   const vueFlowNodes = ref<VueFlowNode[]>([]);
   const vueFlowEdges = ref<VueFlowEdge[]>([]);
+  const isUpdatingFromVueFlow = ref(false);
 
   const convertToVueFlowNodes = (nodesData: Node[]): VueFlowNode[] => {
-    return nodesData.map((node) => ({
-      id: node.id,
-      type: node.type === 'parent' ? 'parent' : node.type === 'note' ? 'note' : 'workflowNode',
-      position: node.position || { x: 0, y: 0 },
-      width: node.width,
-      height: node.height,
-      data: node,
-      parent: node.parentId, // Set parent from node.parentId
-      draggable: true,
-      connectable: node.type !== 'parent' && node.type !== 'note', // Parent and note nodes are not connectable
-      resizable: false, // Resize is handled by CustomNodeResizer component
-      label: undefined, // Explicitly set to undefined to prevent tooltip
-    }));
+    const nodeIds = new Set(nodesData.map((n: Node) => n.id));
+    
+    return nodesData.map((node) => {
+      const parentId = node.parentId && nodeIds.has(node.parentId) ? node.parentId : undefined;
+      
+      return {
+        id: node.id,
+        type: node.type === 'parent' ? 'parent' : node.type === 'note' ? 'note' : 'workflowNode',
+        position: node.position || { x: 0, y: 0 },
+        width: node.width,
+        height: node.height,
+        data: node,
+        parent: parentId,
+        draggable: true,
+        connectable: node.type !== 'parent' && node.type !== 'note',
+        resizable: false,
+        label: undefined,
+      };
+    });
   };
 
   const convertToVueFlowEdges = (edgesData: Edge[]): VueFlowEdge[] => {
@@ -66,6 +73,7 @@ export function useVueFlowSync(
           id: edge.id,
           source: edge.sourceNodeId,
           target: edge.targetNodeId,
+          sourceHandle: edge.sourceHandle,
           type: 'default',
           animated: isAnimated,
           style: isAnimated
@@ -85,12 +93,12 @@ export function useVueFlowSync(
   watch(
     () => nodes.value,
     async (newNodes: Node[]) => {
-      
+      if (isUpdatingFromVueFlow.value) {
+        return;
+      }
       
       const currentNodesMap = new Map(vueFlowNodes.value.map((n: VueFlowNode) => [n.id, n]));
       const newVueFlowNodes = convertToVueFlowNodes(newNodes);
-      
-      
 
       for (const newNode of newVueFlowNodes) {
         const currentNode = currentNodesMap.get(newNode.id);
@@ -157,10 +165,10 @@ export function useVueFlowSync(
         }
       }
 
+      isUpdatingFromVueFlow.value = true;
       vueFlowNodes.value = newVueFlowNodes;
-      
-
       await nextTick();
+      isUpdatingFromVueFlow.value = false;
 
       updateEdges();
     },

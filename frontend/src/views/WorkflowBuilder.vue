@@ -241,6 +241,7 @@ const nodeTypes = [
   { type: 'transform', label: 'Transform', icon: '🔄' },
   { type: 'agent', label: 'Agent', icon: '🤖' },
   { type: 'delay', label: 'Delay', icon: '⏱️' },
+  { type: 'if', label: 'If', icon: '🔀' },
   { type: 'note', label: 'Note', icon: '📝' },
 ];
 
@@ -335,23 +336,46 @@ const onConnectStart = (event: any) => {
   handleConnectStart(event);
 };
 
+const validateHandle = (nodeType: string, handleId: string | null | undefined): boolean => {
+  if (!handleId) {
+    return true;
+  }
+  
+  if (nodeType === 'if') {
+    return ['condition1', 'condition2', 'else'].includes(handleId);
+  }
+  
+  return ['output1', 'output2'].includes(handleId);
+};
+
 const onConnect = async (connection: Connection) => {
   if (!workflow.value || !connection.source || !connection.target) {
     return;
   }
 
-  // Prevent connections to/from parent nodes and note nodes
   const sourceNode = nodes.value.find((n: Node) => n.id === connection.source);
   const targetNode = nodes.value.find((n: Node) => n.id === connection.target);
 
-  if (sourceNode?.type === 'parent' || targetNode?.type === 'parent') {
+  if (!sourceNode || !targetNode) {
+    console.warn('Source or target node not found');
+    handleConnect();
+    return;
+  }
+
+  if (sourceNode.type === 'parent' || targetNode.type === 'parent') {
     console.warn('Cannot connect to or from parent nodes');
     handleConnect();
     return;
   }
 
-  if (sourceNode?.type === 'note' || targetNode?.type === 'note') {
+  if (sourceNode.type === 'note' || targetNode.type === 'note') {
     console.warn('Cannot connect to or from note nodes');
+    handleConnect();
+    return;
+  }
+
+  if (connection.sourceHandle && !validateHandle(sourceNode.type, connection.sourceHandle)) {
+    console.warn(`Invalid sourceHandle "${connection.sourceHandle}" for node type "${sourceNode.type}"`);
     handleConnect();
     return;
   }
@@ -359,11 +383,17 @@ const onConnect = async (connection: Connection) => {
   handleConnect();
 
   try {
-    await createEdge({
+    const edgeData: any = {
       workflowId: workflow.value.id,
       sourceNodeId: connection.source,
       targetNodeId: connection.target,
-    });
+    };
+
+    if (connection.sourceHandle && validateHandle(sourceNode.type, connection.sourceHandle)) {
+      edgeData.sourceHandle = connection.sourceHandle;
+    }
+
+    await createEdge(edgeData);
   } catch (error) {
     console.error('Failed to create edge:', error);
   }
@@ -399,11 +429,20 @@ const onNodeTypeSelect = async (nodeType: string) => {
 
     const newNode = await createNode(nodeData);
 
-    await createEdge({
+    const sourceNode = nodes.value.find((n: Node) => n.id === pendingConnectionSource.value);
+    const edgeData: any = {
       workflowId: workflow.value.id,
       sourceNodeId: pendingConnectionSource.value,
       targetNodeId: newNode.id,
-    });
+    };
+
+    if (sourceNode?.type === 'if') {
+      edgeData.sourceHandle = 'condition1';
+    } else if (sourceNode?.type && sourceNode.type !== 'trigger') {
+      edgeData.sourceHandle = 'output1';
+    }
+
+    await createEdge(edgeData);
 
     hidePlaceholder();
   } catch (error) {
@@ -426,10 +465,6 @@ const onNodesChange = (changes: any[]) => {
         typeof position.x === 'number' &&
         typeof position.y === 'number'
       ) {
-        const vueFlowNode = vueFlowNodes.value.find((n) => n.id === change.id);
-        if (vueFlowNode) {
-          vueFlowNode.position = { x: position.x, y: position.y };
-        }
         const debouncedUpdate = getDebouncedUpdateForNode(change.id);
         debouncedUpdate(change.id, { x: position.x, y: position.y });
       }
@@ -437,11 +472,6 @@ const onNodesChange = (changes: any[]) => {
       if (change.dimensions) {
         const { width, height } = change.dimensions;
         if (typeof width === 'number' && typeof height === 'number') {
-          const vueFlowNode = vueFlowNodes.value.find((n) => n.id === change.id);
-          if (vueFlowNode) {
-            vueFlowNode.width = width;
-            vueFlowNode.height = height;
-          }
           const node = nodes.value.find((n: Node) => n.id === change.id);
           if (node) {
             node.width = width;
@@ -449,8 +479,6 @@ const onNodesChange = (changes: any[]) => {
           }
           const debouncedUpdate = getDebouncedUpdateDimensionsForNode(change.id);
           debouncedUpdate(change.id, width, height);
-          
-        
         }
       }
     }
@@ -487,8 +515,8 @@ const updateNode = async (node: Node) => {
 
     const vueFlowNode = vueFlowNodes.value.find((n) => n.id === node.id);
     const positionToSave = vueFlowNode?.position || node.position;
-    const widthToSave = vueFlowNode?.width ?? node.width;
-    const heightToSave = vueFlowNode?.height ?? node.height;
+    const widthToSave = typeof vueFlowNode?.width === 'number' ? vueFlowNode.width : node.width;
+    const heightToSave = typeof vueFlowNode?.height === 'number' ? vueFlowNode.height : node.height;
     const nodeToUpdate = { ...node, position: positionToSave, width: widthToSave, height: heightToSave };
 
     const hasNonPositionChanges =

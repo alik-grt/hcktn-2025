@@ -8,6 +8,7 @@ services:
     restart: unless-stopped
     ports:
       - '${BACKEND_PORT:-3000}:3000'
+      - '9229:9229'
     environment:
       NODE_ENV: development
       DATABASE_PATH: ${DATABASE_PATH:-/usr/src/app/database.sqlite}
@@ -15,7 +16,7 @@ services:
       - .:/usr/src/app
       - /usr/src/app/node_modules
       - database_data_dev:/usr/src/app
-    command: npm run start:dev
+    command: npm run start:debug
     networks:
       - hackaton-backend-network-dev
 
@@ -25,4 +26,3 @@ volumes:
 networks:
   hackaton-backend-network-dev:
     driver: bridge
-

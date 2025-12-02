@@ -38,10 +38,16 @@ export function useNodeManagement(
       const updated = await workflowsApi.updateNode(node.id, updateData);
       const index = nodes.value.findIndex((n: Node) => n.id === node.id);
       if (index !== -1) {
-        nodes.value[index] = updated;
+        const currentPosition = nodes.value[index].position;
+        const currentWidth = nodes.value[index].width;
+        const currentHeight = nodes.value[index].height;
+        nodes.value[index] = { ...updated, position: currentPosition, width: currentWidth, height: currentHeight };
       }
       if (selectedNode.value?.id === node.id) {
-        selectedNode.value = updated;
+        const currentPosition = selectedNode.value.position;
+        const currentWidth = selectedNode.value.width;
+        const currentHeight = selectedNode.value.height;
+        selectedNode.value = { ...updated, position: currentPosition, width: currentWidth, height: currentHeight };
       }
       return updated;
     } catch (error) {
@@ -61,14 +67,7 @@ export function useNodeManagement(
 
     if (posDiff > 0.5) {
       try {
-        const updated = await workflowsApi.updateNode(nodeId, { position: { x: position.x, y: position.y } });
-        const index = nodes.value.findIndex((n: Node) => n.id === nodeId);
-        if (index !== -1) {
-          nodes.value[index] = { ...nodes.value[index], position: updated.position };
-        }
-        if (selectedNode.value?.id === nodeId) {
-          selectedNode.value = { ...selectedNode.value, position: updated.position };
-        }
+        await workflowsApi.updateNode(nodeId, { position: { x: position.x, y: position.y } });
       } catch (error) {
         console.error(`Failed to update node position for ${nodeId}:`, error);
       }
@@ -140,8 +139,8 @@ export function useNodeManagement(
     for (const node of nodes.value) {
       const vueFlowNode = vueFlowNodes.find((n) => n.id === node.id);
       const positionToSave = vueFlowNode?.position || node.position;
-      const widthToSave = vueFlowNode?.width ?? node.width;
-      const heightToSave = vueFlowNode?.height ?? node.height;
+      const widthToSave = typeof vueFlowNode?.width === 'number' ? vueFlowNode.width : node.width;
+      const heightToSave = typeof vueFlowNode?.height === 'number' ? vueFlowNode.height : node.height;
 
       const nodeToUpdate: Node = {
         ...node,
@@ -161,7 +160,9 @@ export function useNodeManagement(
         url: nodeToUpdate.url,
       });
 
-      updates.push(updateNode(nodeToUpdate).then(() => {}));
+      updates.push(
+        workflowsApi.updateNode(node.id, nodeToUpdate).then(() => {}),
+      );
     }
 
     if (updates.length > 0) {

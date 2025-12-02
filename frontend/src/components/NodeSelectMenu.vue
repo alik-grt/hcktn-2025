@@ -5,9 +5,21 @@
         <h4>Select Node Type</h4>
         <button @click="close" class="close-btn">×</button>
       </div>
+      <div class="menu-search">
+        <div class="search-input-wrapper">
+          <span class="material-symbols-outlined search-icon">search</span>
+          <input
+            v-model="searchQuery"
+            type="text"
+            placeholder="Search nodes..."
+            class="search-input"
+            @click.stop
+          />
+        </div>
+      </div>
       <div class="menu-items">
         <div
-          v-for="nodeType in nodeTypes"
+          v-for="nodeType in filteredNodeTypes"
           :key="nodeType.type"
           class="menu-item"
           @click="selectNode(nodeType.type)"
@@ -21,7 +33,7 @@
 </template>
 
 <script setup lang="ts">
-import { ref, watch } from 'vue';
+import { ref, computed, watch } from 'vue';
 
 type NodeType = {
   type: string;
@@ -41,6 +53,25 @@ const emit = defineEmits<{
   select: [nodeType: string];
   close: [];
 }>();
+
+const searchQuery = ref('');
+
+const filteredNodeTypes = computed(() => {
+  if (!searchQuery.value.trim()) {
+    return props.nodeTypes;
+  }
+  const query = searchQuery.value.toLowerCase().trim();
+  return props.nodeTypes.filter((nodeType) => {
+    const label = nodeType.label.toLowerCase();
+    return label.includes(query);
+  });
+});
+
+watch(() => props.visible, (newValue) => {
+  if (!newValue) {
+    searchQuery.value = '';
+  }
+});
 
 const selectNode = (nodeType: string) => {
   emit('select', nodeType);
@@ -106,8 +137,43 @@ const close = () => {
   color: #333;
 }
 
+.menu-search {
+  padding: 0.5rem 1rem;
+  border-bottom: 1px solid #e0e0e0;
+}
+
+.search-input-wrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.search-icon {
+  position: absolute;
+  left: 0.75rem;
+  font-size: 1.25rem;
+  color: #999;
+  pointer-events: none;
+}
+
+.search-input {
+  width: 100%;
+  padding: 0.5rem 0.75rem 0.5rem 2.5rem;
+  border: 1px solid #e0e0e0;
+  border-radius: 0.25rem;
+  font-size: 0.875rem;
+  outline: none;
+}
+
+.search-input:focus {
+  border-color: #3b82f6;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+}
+
 .menu-items {
   padding: 0.5rem;
+  max-height: 300px;
+  overflow-y: auto;
 }
 
 .menu-item {

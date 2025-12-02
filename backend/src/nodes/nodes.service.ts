@@ -8,7 +8,7 @@ import { WebhookService } from '../triggers/webhook.service';
 import { CronService } from '../triggers/cron.service';
 
 export type CreateNodeDto = {
-  type: 'parent' | 'trigger' | 'http' | 'transform' | 'agent' | 'delay' | 'note';
+  type: 'parent' | 'trigger' | 'http' | 'transform' | 'agent' | 'delay' | 'note' | 'if';
   subtype?: 'manual' | 'webhook' | 'cron';
   workflowId: string;
   position?: { x: number; y: number };
@@ -30,6 +30,7 @@ export type CreateEdgeDto = {
   workflowId: string;
   sourceNodeId: string;
   targetNodeId: string;
+  sourceHandle?: string;
 };
 
 @Injectable()
@@ -79,7 +80,7 @@ export class NodesService {
     const oldCronExpression = node.config?.cronExpression;
     const oldCronActive = node.config?.cronActive;
 
-    console.log('NodesService.update called:', {
+    this.logger.debug('NodesService.update called:', {
       id,
       updateNodeDto,
       currentPosition: node.position,
@@ -127,9 +128,9 @@ export class NodesService {
       node.parentId = updateNodeDto.parentId;
     }
 
-    console.log('NodesService.update after assign:', { id, position: node.position });
+    this.logger.debug('NodesService.update after assign:', { id, position: node.position });
     const savedNode = await this.nodeRepository.save(node);
-    console.log('NodesService.update after save:', { id, savedPosition: savedNode.position });
+    this.logger.debug('NodesService.update after save:', { id, savedPosition: savedNode.position });
 
     if (savedNode.type === 'trigger') {
       if (savedNode.subtype === 'webhook') {
@@ -182,7 +183,7 @@ export class NodesService {
 
   async createEdge(createEdgeDto: CreateEdgeDto): Promise<Edge> {
     this.logger.log(
-      `Creating edge: ${createEdgeDto.sourceNodeId} -> ${createEdgeDto.targetNodeId} in workflow ${createEdgeDto.workflowId}`,
+      `Creating edge: ${createEdgeDto.sourceNodeId} -> ${createEdgeDto.targetNodeId} in workflow ${createEdgeDto.workflowId}${createEdgeDto.sourceHandle ? ` (handle: ${createEdgeDto.sourceHandle})` : ''}`,
     );
     await this.workflowsService.findOne(createEdgeDto.workflowId);
     const sourceNode = await this.findOne(createEdgeDto.sourceNodeId);

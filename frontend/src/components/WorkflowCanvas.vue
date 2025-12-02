@@ -10,6 +10,7 @@
       :node-types="nodeTypesMap"
       :min-zoom="0.1"
       :max-zoom="4"
+      :default-edge-options="{ type: 'default' }"
       @connect="onConnect"
       @connect-start="onConnectStart"
       @connect-end="onConnectEnd"

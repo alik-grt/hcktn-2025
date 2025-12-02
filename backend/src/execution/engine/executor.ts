@@ -10,6 +10,7 @@ import { HttpService } from './http.service';
 import { TransformService } from './transform.service';
 import { AgentService } from './agent.service';
 import { DelayService } from './delay.service';
+import { IfService } from './if.service';
 import { WorkflowGateway } from '../../websocket/workflow.gateway';
 
 export type ExecutionContext = {
@@ -37,6 +38,7 @@ export class Executor {
     private readonly transformService: TransformService,
     private readonly agentService: AgentService,
     private readonly delayService: DelayService,
+    private readonly ifService: IfService,
     private readonly workflowGateway: WorkflowGateway,
   ) {}
 
@@ -91,6 +93,10 @@ export class Executor {
 
       this.logger.log(`Executing ${sortedNodes.length} nodes in order`);
       for (const node of sortedNodes) {
+        if (!this.shouldExecuteNode(node, edges, context, nodes)) {
+          this.logger.log(`Skipping node ${node.id} (${node.type}) due to conditional logic`);
+          continue;
+        }
         this.logger.log(`Executing node ${node.id} (${node.type})`);
         const nodeInput = this.getNodeInput(node, edges, context);
         this.logger.debug(`Node ${node.id} input: ${JSON.stringify(nodeInput)}`);
@@ -177,6 +183,9 @@ export class Executor {
           break;
         case 'delay':
           output = await this.delayService.execute(node, input, context.workflowId);
+          break;
+        case 'if':
+          output = await this.ifService.execute(node, input);
           break;
         default:
           throw new Error(`Unknown node type: ${node.type}`);
@@ -317,5 +326,48 @@ export class Executor {
     for (const node of nodes) {
       this.workflowGateway.emitNodeStatusChanged(workflowId, node.id, 'idle');
     }
+  }
+
+  private shouldExecuteNode(
+    node: Node,
+    edges: Edge[],
+    context: ExecutionContext,
+    allNodes: Node[],
+  ): boolean {
+    if (node.type === 'trigger') {
+      return true;
+    }
+
+    const incomingEdges = edges.filter((e) => e.targetNodeId === node.id);
+    if (incomingEdges.length === 0) {
+      return false;
+    }
+
+    for (const edge of incomingEdges) {
+      const sourceOutput = context.nodeOutputs.get(edge.sourceNodeId);
+      if (!sourceOutput) {
+        continue;
+      }
+
+      const sourceNode = allNodes.find((n) => n.id === edge.sourceNodeId);
+      if (sourceNode?.type === 'if' && edge.sourceHandle) {
+        const ifResult = sourceOutput.__ifResult;
+        if (ifResult === undefined) {
+          continue;
+        }
+
+        const expectedHandle = ifResult === true ? 'true' : ifResult === false ? 'false' : ifResult;
+        if (edge.sourceHandle !== expectedHandle) {
+          this.logger.debug(
+            `Edge ${edge.id} from ${edge.sourceNodeId} has sourceHandle ${edge.sourceHandle}, but if result is ${ifResult}, skipping`,
+          );
+          continue;
+        }
+      }
+
+      return true;
+    }
+
+    return false;
   }
 }

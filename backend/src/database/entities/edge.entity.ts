@@ -26,6 +26,9 @@ export class Edge {
   @Column({ type: 'uuid' })
   targetNodeId: string;
 
+  @Column({ type: 'varchar', length: 50, nullable: true })
+  sourceHandle: string;
+
   @CreateDateColumn()
   createdAt: Date;
 }

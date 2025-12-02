@@ -17,12 +17,12 @@ export default defineConfig({
     },
     proxy: {
       '/api': {
-        target: process.env.VITE_API_URL || 'http://localhost:3000',
+        target: process.env.VITE_API_URL || 'http://backend:3000',
         changeOrigin: true,
         rewrite: (path) => path.replace(/^\/api/, ''),
       },
       '/ws': {
-        target: process.env.VITE_API_URL?.replace('http://', 'ws://').replace('https://', 'wss://') || 'ws://localhost:3000',
+        target: (process.env.VITE_API_URL || 'http://backend:3000').replace('http://', 'ws://').replace('https://', 'wss://'),
         ws: true,
       },
     },

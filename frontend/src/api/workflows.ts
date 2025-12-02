@@ -27,7 +27,7 @@ export type Workflow = {
 
 export type Node = {
   id: string;
-  type: 'parent' | 'trigger' | 'http' | 'transform' | 'agent' | 'delay' | 'note';
+  type: 'parent' | 'trigger' | 'http' | 'transform' | 'agent' | 'delay' | 'note' | 'if';
   subtype?: 'manual' | 'webhook' | 'cron';
   workflowId: string;
   position?: { x: number; y: number };
@@ -51,6 +51,7 @@ export type Edge = {
   workflowId: string;
   sourceNodeId: string;
   targetNodeId: string;
+  sourceHandle?: string;
   createdAt: string;
 };
 
@@ -61,7 +62,7 @@ export type CreateWorkflowDto = {
 };
 
 export type CreateNodeDto = {
-  type: 'parent' | 'trigger' | 'http' | 'transform' | 'agent' | 'delay' | 'note';
+  type: 'parent' | 'trigger' | 'http' | 'transform' | 'agent' | 'delay' | 'note' | 'if';
   subtype?: 'manual' | 'webhook' | 'cron';
   workflowId: string;
   position?: { x: number; y: number };
@@ -81,6 +82,7 @@ export type CreateEdgeDto = {
   workflowId: string;
   sourceNodeId: string;
   targetNodeId: string;
+  sourceHandle?: string;
 };
 
 export const workflowsApi = {

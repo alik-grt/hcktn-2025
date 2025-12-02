@@ -233,13 +233,49 @@
         class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary focus:outline-none focus:ring-2 focus:ring-primary/50"
       />
     </div>
+    <div v-if="node.type === 'if'" class="flex flex-col gap-4">
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-medium text-text-light-primary dark:text-text-dark-primary"
+          >Condition 1</label
+        >
+        <input
+          v-model="ifCondition1"
+          type="text"
+          placeholder='{{age > 18}}'
+          class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+        />
+        <small class="text-xs text-text-light-secondary dark:text-text-dark-secondary"
+          >First condition to check. If true, execution follows the green path.</small
+        >
+      </div>
+      <div class="flex flex-col gap-2">
+        <label class="text-sm font-medium text-text-light-primary dark:text-text-dark-primary"
+          >Condition 2</label
+        >
+        <input
+          v-model="ifCondition2"
+          type="text"
+          placeholder='{{status == "active"}}'
+          class="px-3 py-2 border border-border-light dark:border-border-dark rounded-lg bg-card-light dark:bg-card-dark text-text-light-primary dark:text-text-dark-primary font-mono text-sm focus:outline-none focus:ring-2 focus:ring-primary/50"
+        />
+        <small class="text-xs text-text-light-secondary dark:text-text-dark-secondary"
+          >Second condition to check if condition 1 is false. If true, execution follows the blue path.</small
+        >
+      </div>
+      <div class="px-3 py-2 bg-gray-50 dark:bg-gray-800 rounded-lg border border-gray-200 dark:border-gray-700">
+        <small class="text-xs text-text-light-secondary dark:text-text-dark-secondary"
+          ><strong>Execution flow:</strong> If condition 1 is true → green path (condition1). If condition 1 is false and condition 2 is true → blue path (condition2). If both are false → red path (else).</small
+        >
+      </div>
+    </div>
     <div
       v-if="
         node.type === 'http' ||
         node.type === 'transform' ||
         node.type === 'agent' ||
         node.type === 'delay' ||
-        node.type === 'parent'
+        node.type === 'parent' ||
+        node.type === 'if'
       "
       class="flex gap-2 pt-2"
     >
@@ -277,6 +313,8 @@ const delayUntil = ref<string>(
   props.node.config?.until ? new Date(props.node.config.until).toISOString().slice(0, 16) : '',
 );
 const delayType = ref<'ms' | 'until'>(props.node.config?.until ? 'until' : 'ms');
+const ifCondition1 = ref<string>(props.node.config?.condition1 || '');
+const ifCondition2 = ref<string>(props.node.config?.condition2 || '');
 
 watch(
   () => props.node,
@@ -290,6 +328,8 @@ watch(
       ? new Date(newNode.config.until).toISOString().slice(0, 16)
       : '';
     delayType.value = newNode.config?.until ? 'until' : 'ms';
+    ifCondition1.value = newNode.config?.condition1 || '';
+    ifCondition2.value = newNode.config?.condition2 || '';
 
     if (newNode.type === 'trigger' && newNode.subtype === 'webhook' && newNode.id) {
       await loadWebhookUrl();
@@ -336,6 +376,14 @@ const handleSave = () => {
         delete localNode.value.config.until;
       }
     }
+  }
+  if (localNode.value.type === 'if') {
+    if (!localNode.value.config) {
+      localNode.value.config = {};
+    }
+    localNode.value.config.condition1 = ifCondition1.value;
+    localNode.value.config.condition2 = ifCondition2.value;
+    delete localNode.value.config.condition;
   }
   // Parent node only needs name, which is already in localNode.value.name
   handleUpdate();

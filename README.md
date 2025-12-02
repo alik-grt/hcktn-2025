@@ -12,33 +12,39 @@ make run
 
 Эта команда:
 - Остановит существующие контейнеры (если они запущены)
-- Соберет Docker образы
-- Запустит все сервисы (backend, frontend, PostgreSQL)
-- Установит зависимости frontend
+- Соберет Docker образы без кеша для backend и frontend
+- Запустит оба сервиса (backend и frontend) в отдельных контейнерах
+- Автоматически покажет логи обоих сервисов
 
 После запуска приложение будет доступно:
 - **Frontend**: http://localhost:5173
 - **Backend API**: http://localhost:3000
-- **PostgreSQL**: localhost:5432
-
-Для остановки контейнеров:
-```bash
-make stop
-```
 
 Для просмотра логов:
 ```bash
 make logs
 ```
 
+Эта команда покажет логи обоих контейнеров (backend и frontend) одновременно.
+
+## Архитектура
+
+Проект использует раздельную архитектуру с отдельными Docker Compose файлами для каждого сервиса:
+
+- **Backend**: запускается через `backend/docker-compose.dev.yml`
+- **Frontend**: запускается через `frontend/docker-compose.dev.yml`
+
+Каждый сервис работает в своем собственном Docker контейнере и сети, что обеспечивает изоляцию и упрощает разработку.
+
 ## Технологии
 
 ### Backend
 - **NestJS** - прогрессивный Node.js фреймворк
-- **PostgreSQL** - реляционная база данных
+- **SQLite** - легковесная база данных (через better-sqlite3)
 - **TypeORM** - ORM для работы с БД
 - **Socket.IO** - WebSocket для real-time обновлений
 - **Docker** - контейнеризация
+- **Hot Reload** - автоматическая перезагрузка при изменениях кода (с polling)
 
 ### Frontend
 - **Vue 3** - прогрессивный JavaScript фреймворк
@@ -47,95 +53,33 @@ make logs
 - **Vue Router** - маршрутизация
 - **Pinia** - управление состоянием
 - **Socket.IO Client** - WebSocket клиент
-
-## Быстрый старт
-
-### Предварительные требования
-
-- Docker и Docker Compose
-- Node.js 20+ (для локальной разработки)
-
-### Запуск с Docker
-
-1. Клонируйте репозиторий и перейдите в директорию проекта
-
-2. Скопируйте `.env.example` в `.env`:
-```bash
-cp .env.example .env
-```
-
-3. Запустите backend в режиме разработки:
-```bash
-docker-compose -f docker-compose.dev.yml up --build
-```
-
-4. В отдельном терминале установите зависимости frontend и запустите:
-```bash
-cd frontend
-npm install
-npm run dev
-```
-
-5. Откройте браузер: http://localhost:5173
-
-### Локальная разработка
-
-#### Backend
-
-1. Установите зависимости:
-```bash
-npm install
-```
-
-2. Запустите PostgreSQL через Docker:
-```bash
-docker-compose -f docker-compose.dev.yml up postgres -d
-```
-
-3. Запустите backend:
-```bash
-npm run start:dev
-```
-
-#### Frontend
-
-1. Перейдите в директорию frontend:
-```bash
-cd frontend
-```
-
-2. Установите зависимости:
-```bash
-npm install
-```
-
-3. Запустите dev сервер:
-```bash
-npm run dev
-```
+- **VueFlow** - библиотека для создания node-based редакторов
 
 ## Структура проекта
 
 ```
 .
-├── src/                    # Backend (NestJS)
-│   ├── database/
-│   │   └── entities/      # TypeORM entities
-│   ├── workflows/         # Модуль workflows
-│   ├── nodes/             # Модуль нод
-│   ├── execution/         # Модуль выполнения
-│   │   └── engine/        # Execution engine
-│   └── websocket/         # WebSocket gateway
-├── frontend/              # Frontend (Vue 3)
+├── backend/                  # Backend (NestJS)
 │   ├── src/
-│   │   ├── api/           # API клиент
-│   │   ├── composables/   # Vue composables
-│   │   ├── components/    # Vue компоненты
-│   │   └── views/         # Страницы
-│   └── package.json
-├── docker-compose.yml     # Production конфигурация
-├── docker-compose.dev.yml # Development конфигурация
-└── Dockerfile             # Docker образ для backend
+│   │   ├── database/
+│   │   │   └── entities/    # TypeORM entities
+│   │   ├── workflows/       # Модуль workflows
+│   │   ├── nodes/           # Модуль нод
+│   │   ├── execution/       # Модуль выполнения
+│   │   │   └── engine/      # Execution engine
+│   │   └── websocket/       # WebSocket gateway
+│   ├── docker-compose.dev.yml
+│   └── Dockerfile
+├── frontend/                # Frontend (Vue 3)
+│   ├── src/
+│   │   ├── api/             # API клиент
+│   │   ├── composables/     # Vue composables
+│   │   ├── components/      # Vue компоненты
+│   │   └── views/           # Страницы
+│   ├── docker-compose.dev.yml
+│   └── Dockerfile
+├── Makefile                 # Команды для управления проектом
+└── README.md
 ```
 
 ## API Endpoints
@@ -184,13 +128,20 @@ npm run dev
 - Выполнение HTTP запросов (GET, POST, PUT, DELETE)
 - Интерполяция шаблонов: `{{variable}}`
 - Кастомные headers и body
+- Автоматическое определение ошибок (статус >= 400)
 
 ### 3. Transform Node
 - Трансформация JSON данных
 - Поддержка выражений: `{{age > 18}}`
 - Шаблонизация полей
 
-### 4. Agent Node
+### 4. If Node
+- Условное ветвление выполнения
+- Поддержка двух условий (condition1 и condition2)
+- Три выходных пути: condition1 (зеленый), condition2 (синий), else (красный)
+- Выражения: `{{age > 18}}`, `{{status == "active"}}`
+
+### 5. Agent Node
 - Placeholder для AI интеграции
 - Хранение конфигурации
 
@@ -198,7 +149,7 @@ npm run dev
 
 ### Создание workflow
 
-1. Откройте приложение
+1. Откройте приложение: http://localhost:5173
 2. Нажмите "Create Workflow"
 3. Перетащите ноды из палитры на canvas
 4. Соедините ноды (drag от output handle к input handle)
@@ -231,19 +182,40 @@ npm run dev
 }
 ```
 
+### Пример If Node
+
+```json
+{
+  "condition1": "{{age > 18}}",
+  "condition2": "{{status == \"active\"}}"
+}
+```
+
+- Если `condition1` истинно → выполнение идет по зеленому пути (condition1)
+- Если `condition1` ложно, но `condition2` истинно → выполнение идет по синему пути (condition2)
+- Если оба условия ложны → выполнение идет по красному пути (else)
+
 ## Разработка
 
-### Backend команды
+### Команды Makefile
+
+```bash
+make run   # Запустить backend и frontend
+make logs  # Показать логи обоих контейнеров
+```
+
+### Backend команды (внутри контейнера)
 
 ```bash
 npm run build          # Сборка
 npm run start:dev      # Development режим
+npm run start:debug    # Development режим с debugger (порт 9229)
 npm run start:prod     # Production режим
 npm run lint           # Линтинг
 npm run test           # Тесты
 ```
 
-### Frontend команды
+### Frontend команды (внутри контейнера)
 
 ```bash
 npm run dev            # Development сервер
@@ -254,18 +226,35 @@ npm run lint           # Линтинг
 
 ## Переменные окружения
 
-См. `.env.example` для списка переменных окружения.
+### Backend
 
-Основные:
-- `POSTGRES_USER` - пользователь PostgreSQL
-- `POSTGRES_PASSWORD` - пароль PostgreSQL
-- `POSTGRES_DB` - имя базы данных
-- `DATABASE_HOST` - хост базы данных
-- `BACKEND_PORT` - порт backend (по умолчанию 3000)
+- `NODE_ENV` - окружение (development/production)
+- `DATABASE_PATH` - путь к SQLite базе данных (по умолчанию: `/usr/src/app/database.sqlite`)
+- `BACKEND_PORT` - порт backend (по умолчанию: 3000)
+- `CHOKIDAR_USEPOLLING` - использование polling для hot reload (по умолчанию: true)
 
-## Архитектура
+### Frontend
 
-Подробное описание архитектуры см. в [ARCHITECTURE.md](./ARCHITECTURE.md)
+- `VITE_API_URL` - URL backend API (по умолчанию: `http://localhost:3000`)
+- `FRONTEND_PORT` - порт frontend (по умолчанию: 5173)
+
+## Hot Reload
+
+Оба сервиса поддерживают автоматическую перезагрузку при изменениях кода:
+
+- **Backend**: использует `nest start --watch` с polling (CHOKIDAR_USEPOLLING=true)
+- **Frontend**: использует Vite HMR (Hot Module Replacement)
+
+Изменения в коде автоматически применяются без перезапуска контейнеров.
+
+## Отладка
+
+Для отладки backend можно подключить debugger:
+
+1. Backend запускается с `--inspect=0.0.0.0:9229`
+2. Настройте VS Code launch.json для подключения к `localhost:9229`
+3. Установите breakpoints в TypeScript коде
+4. Запустите debugger в VS Code
 
 ## Лицензия
 

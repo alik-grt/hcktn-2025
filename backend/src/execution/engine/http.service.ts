@@ -26,20 +26,31 @@ export class HttpService {
 
     try {
       const response: AxiosResponse = await axios(config);
+      if (response.status >= 400) {
+        this.logger.error(`HTTP request failed with status ${response.status}`);
+        throw new Error(`HTTP request failed with status ${response.status}`);
+      }
+      if (response.data && typeof response.data === 'object' && 'error' in response.data) {
+        const errorMessage =
+          typeof response.data.error === 'string'
+            ? response.data.error
+            : JSON.stringify(response.data.error);
+        this.logger.error(`HTTP response contains error field: ${errorMessage}`);
+        throw new Error(`HTTP response error: ${errorMessage}`);
+      }
       return {
         status: response.status,
         body: response.data,
         headers: response.headers,
       };
-    } catch (error) {
+    } catch (error: any) {
       this.logger.error(`HTTP request failed: ${error.message}`);
       if (error.response) {
-        return {
-          status: error.response.status,
-          body: error.response.data,
-          headers: error.response.headers,
-          error: error.message,
-        };
+        const status = error.response.status;
+        const statusText = error.response.statusText || 'Unknown';
+        throw new Error(
+          `HTTP request failed with status ${status} ${statusText}: ${error.message}`,
+        );
       }
       throw new Error(`HTTP request failed: ${error.message}`);
     }

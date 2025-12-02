@@ -10,7 +10,15 @@ import {
 } from 'typeorm';
 import { Workflow } from './workflow.entity';
 
-export type NodeType = 'parent' | 'trigger' | 'http' | 'transform' | 'agent' | 'delay' | 'note';
+export type NodeType =
+  | 'parent'
+  | 'trigger'
+  | 'http'
+  | 'transform'
+  | 'agent'
+  | 'delay'
+  | 'note'
+  | 'if';
 export type TriggerSubtype = 'manual' | 'webhook' | 'cron';
 export type NodeStatus = 'idle' | 'progress' | 'passed' | 'error';
 

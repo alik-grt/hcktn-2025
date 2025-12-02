@@ -8,6 +8,7 @@ import { HttpService } from './engine/http.service';
 import { TransformService } from './engine/transform.service';
 import { AgentService } from './engine/agent.service';
 import { DelayService } from './engine/delay.service';
+import { IfService } from './engine/if.service';
 import { Execution } from '../database/entities/execution.entity';
 import { ExecutionNode } from '../database/entities/execution-node.entity';
 import { Node } from '../database/entities/node.entity';
@@ -30,6 +31,7 @@ import { WebSocketModule } from '../websocket/websocket.module';
     TransformService,
     AgentService,
     DelayService,
+    IfService,
   ],
   exports: [ExecutionService, Executor],
 })
