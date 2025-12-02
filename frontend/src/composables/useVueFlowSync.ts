@@ -18,9 +18,11 @@ export function useVueFlowSync(
       width: node.width,
       height: node.height,
       data: node,
+      parent: node.parentId, // Set parent from node.parentId
       draggable: true,
       connectable: node.type !== 'parent' && node.type !== 'note', // Parent and note nodes are not connectable
-      resizable: node.type === 'parent', // Only parent nodes are resizable
+      resizable: false, // Resize is handled by CustomNodeResizer component
+      label: undefined, // Explicitly set to undefined to prevent tooltip
     }));
   };
 
@@ -83,12 +85,17 @@ export function useVueFlowSync(
   watch(
     () => nodes.value,
     async (newNodes: Node[]) => {
+      
+      
       const currentNodesMap = new Map(vueFlowNodes.value.map((n: VueFlowNode) => [n.id, n]));
       const newVueFlowNodes = convertToVueFlowNodes(newNodes);
+      
+      
 
       for (const newNode of newVueFlowNodes) {
         const currentNode = currentNodesMap.get(newNode.id);
         if (currentNode) {
+          
           const currentPos = (currentNode as VueFlowNode).position;
           const newNodePos = newNode.position;
 
@@ -124,27 +131,34 @@ export function useVueFlowSync(
             currentWidth &&
             typeof currentWidth === 'number' &&
             currentHeight &&
-            typeof currentHeight === 'number'
+            typeof currentHeight === 'number' &&
+            (currentWidth !== 0 || currentHeight !== 0)
           ) {
-            const widthDiff = Math.abs(currentWidth - (newNodeWidth || 0));
-            const heightDiff = Math.abs(currentHeight - (newNodeHeight || 0));
-            if (widthDiff > 1 || heightDiff > 1) {
+            const newNodeWidthNum = typeof newNodeWidth === 'number' ? newNodeWidth : 0;
+            const newNodeHeightNum = typeof newNodeHeight === 'number' ? newNodeHeight : 0;
+            const widthDiff = Math.abs(currentWidth - newNodeWidthNum);
+            const heightDiff = Math.abs(currentHeight - newNodeHeightNum);
+            if (widthDiff > 5 || heightDiff > 5) {
               newNode.width = currentWidth;
               newNode.height = currentHeight;
             } else if (
-              newNodeWidth &&
-              newNodeHeight &&
+              typeof newNodeWidth === 'number' &&
+              typeof newNodeHeight === 'number' &&
               Math.abs(currentWidth - newNodeWidth) < 0.1 &&
               Math.abs(currentHeight - newNodeHeight) < 0.1
             ) {
               newNode.width = currentWidth;
               newNode.height = currentHeight;
             }
+          } else if (newNodeWidth && typeof newNodeWidth === 'number' && newNodeHeight && typeof newNodeHeight === 'number') {
+            newNode.width = newNodeWidth;
+            newNode.height = newNodeHeight;
           }
         }
       }
 
       vueFlowNodes.value = newVueFlowNodes;
+      
 
       await nextTick();
 

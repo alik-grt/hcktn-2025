@@ -47,7 +47,10 @@ export function useWorkflowManagement() {
           const loadedNodes = await workflowsApi.getNodes(newRouteId as string);
           const loadedEdges = await workflowsApi.getEdges(newRouteId as string);
 
+
+          
           nodes.value = loadedNodes;
+        
 
           const nodeIds = new Set(loadedNodes.map((n: Node) => n.id));
           const validEdges = loadedEdges.filter((edge: Edge) => {
@@ -85,7 +88,9 @@ export function useWorkflowManagement() {
       const loadedNodes = await workflowsApi.getNodes(idToLoad);
       const loadedEdges = await workflowsApi.getEdges(idToLoad);
 
+      
       nodes.value = loadedNodes;
+      
 
       const nodeIds = new Set(loadedNodes.map((n: Node) => n.id));
       const validEdges = loadedEdges.filter((edge: Edge) => {

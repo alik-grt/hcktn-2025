@@ -59,10 +59,8 @@ import { Background } from '@vue-flow/background';
 import { Controls } from '@vue-flow/controls';
 import { MiniMap } from '@vue-flow/minimap';
 import type { Node as VueFlowNode, Edge as VueFlowEdge, Connection } from '@vue-flow/core';
-import type { Workflow, Node } from '../api/workflows';
+import type { Workflow } from '../api/workflows';
 import WorkflowNode from './WorkflowNode.vue';
-import ParentNode from './ParentNode.vue';
-import NoteNode from './NoteNode.vue';
 import AddNodePlaceholder from './AddNodePlaceholder.vue';
 import NodeSelectMenu from './NodeSelectMenu.vue';
 
@@ -103,9 +101,9 @@ const emit = defineEmits<{
 
 const nodeTypesMap = {
   workflowNode: markRaw(WorkflowNode),
-  parent: markRaw(ParentNode),
-  note: markRaw(NoteNode),
-};
+  parent: markRaw(WorkflowNode),
+  note: markRaw(WorkflowNode),
+} as any;
 
 const vueFlowInstance = useVueFlow();
 
@@ -204,6 +202,32 @@ defineExpose({
 
 :deep(.vue-flow__edge.animated) {
   filter: drop-shadow(0 0 2px rgba(0, 123, 255, 0.5));
+}
+
+:deep(.vue-flow__node) {
+  pointer-events: auto;
+}
+
+:deep(.vue-flow__node[title]) {
+  pointer-events: auto;
+}
+
+:deep(.vue-flow__node-wrapper) {
+  pointer-events: auto;
+  overflow: visible;
+}
+
+:deep(.vue-flow__node-wrapper > *) {
+  box-sizing: border-box;
+}
+
+:deep(.vue-flow__node-wrapper[title]) {
+  pointer-events: auto;
+}
+
+:deep(.vue-flow__node-wrapper[title]::after) {
+  display: none !important;
+  content: none !important;
 }
 
 @keyframes dashdraw {

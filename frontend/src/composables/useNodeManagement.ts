@@ -133,21 +133,27 @@ export function useNodeManagement(
   };
 
   const saveAllNodes = async (
-    vueFlowNodes: Array<{ id: string; position?: { x: number; y: number } }>,
+    vueFlowNodes: Array<{ id: string; position?: { x: number; y: number }; width?: number; height?: number }>,
   ): Promise<void> => {
     const updates: Promise<void>[] = [];
 
     for (const node of nodes.value) {
       const vueFlowNode = vueFlowNodes.find((n) => n.id === node.id);
       const positionToSave = vueFlowNode?.position || node.position;
+      const widthToSave = vueFlowNode?.width ?? node.width;
+      const heightToSave = vueFlowNode?.height ?? node.height;
 
       const nodeToUpdate: Node = {
         ...node,
         position: positionToSave,
+        width: widthToSave,
+        height: heightToSave,
       };
 
       console.log(`Saving node ${node.id}:`, {
         position: positionToSave,
+        width: widthToSave,
+        height: heightToSave,
         vueFlowPosition: vueFlowNode?.position,
         nodePosition: node.position,
         config: nodeToUpdate.config,

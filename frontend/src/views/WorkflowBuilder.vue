@@ -269,6 +269,11 @@ const handleNodeRun = async (node: Node) => {
     }
     return;
   }
+  // Block manual trigger if workflow is not active
+  if (node.type === 'trigger' && (node.subtype === 'manual' || !node.subtype) && workflow.value.status !== 'active') {
+    alert('Please activate the workflow first before running the trigger.');
+    return;
+  }
   await runWorkflow();
 };
 
@@ -293,6 +298,7 @@ provide('onNodeRun', handleNodeRun);
 provide('onNodePause', handleNodePause);
 provide('workflowStatus', () => workflow.value?.status || null);
 provide('selectedNode', selectedNode);
+provide('nodes', nodes);
 
 const onDrop = async (event: DragEvent) => {
   event.preventDefault();
@@ -426,31 +432,6 @@ const onNodesChange = (changes: any[]) => {
         }
         const debouncedUpdate = getDebouncedUpdateForNode(change.id);
         debouncedUpdate(change.id, { x: position.x, y: position.y });
-
-        if (canvasVueFlowInstance.value && canvasVueFlowInstance.value.getIntersectingNodes) {
-          const movedNode = vueFlowNodes.value.find((n) => n.id === change.id);
-          if (movedNode && movedNode.type !== 'parent') {
-            const intersectingNodes = canvasVueFlowInstance.value.getIntersectingNodes(movedNode);
-            const parentNode = intersectingNodes.find((n: any) => n.type === 'parent');
-            if (parentNode) {
-              const node = nodes.value.find((n: Node) => n.id === change.id);
-              if (node && node.parentId !== parentNode.id) {
-                updateNode({
-                  ...node,
-                  parentId: parentNode.id,
-                });
-              }
-            } else {
-              const node = nodes.value.find((n: Node) => n.id === change.id);
-              if (node && node.parentId) {
-                updateNode({
-                  ...node,
-                  parentId: undefined,
-                });
-              }
-            }
-          }
-        }
       }
     } else if (change.type === 'dimensions') {
       if (change.dimensions) {
@@ -461,8 +442,15 @@ const onNodesChange = (changes: any[]) => {
             vueFlowNode.width = width;
             vueFlowNode.height = height;
           }
+          const node = nodes.value.find((n: Node) => n.id === change.id);
+          if (node) {
+            node.width = width;
+            node.height = height;
+          }
           const debouncedUpdate = getDebouncedUpdateDimensionsForNode(change.id);
           debouncedUpdate(change.id, width, height);
+          
+        
         }
       }
     }
@@ -499,7 +487,9 @@ const updateNode = async (node: Node) => {
 
     const vueFlowNode = vueFlowNodes.value.find((n) => n.id === node.id);
     const positionToSave = vueFlowNode?.position || node.position;
-    const nodeToUpdate = { ...node, position: positionToSave };
+    const widthToSave = vueFlowNode?.width ?? node.width;
+    const heightToSave = vueFlowNode?.height ?? node.height;
+    const nodeToUpdate = { ...node, position: positionToSave, width: widthToSave, height: heightToSave };
 
     const hasNonPositionChanges =
       oldNode.type !== node.type ||
@@ -630,11 +620,12 @@ const focusOnTriggerNode = async () => {
 
 const onVueFlowInstanceReceived = (instance: any) => {
   if (instance) {
-    canvasVueFlowInstance.value = instance;
+    canvasVueFlowInstance.value = instance
   }
 };
 
 const onVueFlowInit = async () => {
+  
   await nextTick();
   await nextTick();
 
@@ -731,13 +722,16 @@ watch(
 watch(
   () => [route.params.id, route.path] as const,
   async ([newId, newPath], [oldId, oldPath]) => {
+    
     if (newId !== oldId || newPath !== oldPath) {
       hasFocusedOnTrigger.value = false;
       disconnect();
       resetWorkflow();
       selectedNode.value = null;
+      
       if ((newId && newId !== 'new') || (newPath && newPath !== '/workflow/new')) {
         const loaded = await loadWorkflow();
+        
         if (loaded) {
           await cleanupOrphanedEdges();
           connect();
@@ -760,7 +754,7 @@ watch(
   { immediate: false },
 );
 
-onMounted(async () => {
+onMounted(async () => {  
   const loaded = await loadWorkflow();
   if (loaded) {
     await cleanupOrphanedEdges();

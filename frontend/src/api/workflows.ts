@@ -119,9 +119,9 @@ export const workflowsApi = {
   },
 
   async updateNode(id: string, data: Partial<CreateNodeDto>): Promise<Node> {
-    console.log('API updateNode called:', { id, data, position: data.position });
+    //console.log('API updateNode called:', { id, data, position: data.position });
     const response = await api.patch<Node>(`/nodes/${id}`, data);
-    console.log('API updateNode response:', response.data);
+    //console.log('API updateNode response:', response.data);
     return response.data;
   },
 

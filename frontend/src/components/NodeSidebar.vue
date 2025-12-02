@@ -67,7 +67,7 @@ defineEmits<{
 }>();
 
 const nodeTypes = [
-  { type: 'parent', label: 'Parent', icon: '📁' },
+  // { type: 'parent', label: 'Parent', icon: '📁' },
   { type: 'trigger', label: 'Trigger', icon: '⚡' },
   { type: 'http', label: 'HTTP', icon: '🌐' },
   { type: 'transform', label: 'Transform', icon: '🔄' },
