@@ -36,6 +36,37 @@ make logs
 
 Каждый сервис работает в своем собственном Docker контейнере и сети, что обеспечивает изоляцию и упрощает разработку.
 
+## Управление логами
+
+Уровень логирования можно настроить через переменную окружения `LOG_LEVEL`:
+
+```bash
+# В docker-compose.dev.yml или .env файле
+LOG_LEVEL=log,error,warn          # Production (по умолчанию)
+LOG_LEVEL=log,error,warn,debug    # Development с debug логами
+LOG_LEVEL=log,error,warn,debug,verbose  # Полное логирование
+```
+
+**Доступные уровни:**
+- `log` - основные логи (всегда включен)
+- `error` - ошибки (всегда включен)
+- `warn` - предупреждения (всегда включен)
+- `debug` - отладочные логи (для разработки)
+- `verbose` - подробные логи (максимальная детализация)
+
+**Примеры использования:**
+
+```bash
+# Включить только основные логи
+LOG_LEVEL=log,error,warn
+
+# Включить debug логи для отладки
+LOG_LEVEL=log,error,warn,debug
+
+# Полное логирование (все уровни)
+LOG_LEVEL=log,error,warn,debug,verbose
+```
+
 ## Технологии
 
 ### Backend
@@ -45,6 +76,7 @@ make logs
 - **Socket.IO** - WebSocket для real-time обновлений
 - **Docker** - контейнеризация
 - **Hot Reload** - автоматическая перезагрузка при изменениях кода (с polling)
+- **JEXL** - библиотека для безопасной оценки выражений
 
 ### Frontend
 - **Vue 3** - прогрессивный JavaScript фреймворк

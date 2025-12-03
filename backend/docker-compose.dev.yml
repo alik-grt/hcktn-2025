@@ -13,6 +13,7 @@ services:
       NODE_ENV: development
       DATABASE_PATH: ${DATABASE_PATH:-/usr/src/app/data/database.sqlite}
       CHOKIDAR_USEPOLLING: 'true'
+      LOG_LEVEL: ${LOG_LEVEL:-log,error,warn}
     volumes:
       - .:/usr/src/app
       - /usr/src/app/node_modules
