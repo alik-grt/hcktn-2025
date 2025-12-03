@@ -12,6 +12,7 @@ import { AgentService } from './agent.service';
 import { DelayService } from './delay.service';
 import { IfService } from './if.service';
 import { WorkflowGateway } from '../../websocket/workflow.gateway';
+import { NonFatalError } from './non-fatal-error';
 
 export type ExecutionContext = {
   executionId: string;
@@ -201,15 +202,25 @@ export class Executor {
       this.workflowGateway.emitNodeStatusChanged(context.workflowId, node.id, 'passed');
 
       return output;
-    } catch (error) {
+    } catch (error: any) {
       const duration = Date.now() - startTime;
+      const errorMessage = error?.message || String(error) || 'Unknown error';
       executionNode.status = 'error';
-      executionNode.error = error.message;
+      executionNode.error = errorMessage;
       executionNode.duration = duration;
       executionNode.finishedAt = new Date();
       await this.executionNodeRepository.save(executionNode);
 
       this.workflowGateway.emitNodeStatusChanged(context.workflowId, node.id, 'error');
+
+      if (error instanceof NonFatalError) {
+        this.logger.warn(
+          `Node ${node.id} (${node.type}) failed with non-fatal error: ${errorMessage}. Continuing execution.`,
+        );
+        executionNode.output = error.data || { error: errorMessage, __error: true };
+        await this.executionNodeRepository.save(executionNode);
+        return error.data || { error: errorMessage, __error: true };
+      }
 
       throw error;
     }

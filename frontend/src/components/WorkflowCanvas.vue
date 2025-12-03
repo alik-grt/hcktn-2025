@@ -30,23 +30,7 @@
       <Controls />
       <MiniMap />
     </VueFlow>
-    <AddNodePlaceholder
-      v-if="placeholderVisible"
-      :style="{
-        position: 'absolute',
-        left: `${placeholderPosition.x - 30}px`,
-        top: `${placeholderPosition.y - 30}px`,
-        zIndex: 1000,
-      }"
-      @click="$emit('showNodeSelectMenu')"
-    />
-    <NodeSelectMenu
-      :visible="nodeSelectMenuVisible"
-      :position="nodeSelectMenuPosition"
-      :nodeTypes="nodeTypes"
-      @select="$emit('nodeTypeSelect', $event)"
-      @close="$emit('hideNodeSelectMenu')"
-    />
+   
     <div v-if="!workflow" class="loading-overlay">
       <div class="loading-message">Loading workflow...</div>
     </div>
@@ -62,8 +46,6 @@ import { MiniMap } from '@vue-flow/minimap';
 import type { Node as VueFlowNode, Edge as VueFlowEdge, Connection } from '@vue-flow/core';
 import type { Workflow } from '../api/workflows';
 import WorkflowNode from './WorkflowNode.vue';
-import AddNodePlaceholder from './AddNodePlaceholder.vue';
-import NodeSelectMenu from './NodeSelectMenu.vue';
 
 type Props = {
   workflow: Workflow | null;
@@ -142,6 +124,7 @@ const onPaneClick = (event: MouseEvent) => {
 };
 
 const onDrop = (event: DragEvent) => {
+  event.preventDefault();
   emit('drop', event);
 };
 

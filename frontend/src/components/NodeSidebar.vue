@@ -40,7 +40,12 @@
         <div
           v-for="nodeType in filteredNodeTypes"
           :key="nodeType.type"
-          class="flex cursor-grab items-center gap-3 rounded-lg border border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-800 p-3 shadow-sm hover:shadow-md transition-shadow"
+          :class="[
+          'flex cursor-grab items-center gap-3 rounded-lg border p-3 shadow-sm hover:shadow-md transition-shadow',
+          nodeType.inDevelopment
+            ? 'border-error border-2 border-dashed bg-gray-50 dark:bg-gray-800'
+            : 'border-border-light dark:border-border-dark bg-gray-50 dark:bg-gray-800',
+        ]"
           draggable="true"
           @dragstart="handleDragStart($event, nodeType)"
         >
@@ -89,7 +94,8 @@ const nodeTypes = [
   { type: 'transform', label: 'Transform', icon: '🔄' },
   { type: 'agent', label: 'Agent', icon: '🤖' },
   { type: 'delay', label: 'Delay', icon: '⏱️' },
-  { type: 'if', label: 'If', icon: '🔀' },
+  { type: 'if', label: 'If', icon: '🔀', inDevelopment: true },
+  { type: 'merge', label: 'Merge', icon: '🔗', inDevelopment: true },
   { type: 'note', label: 'Note', icon: '📝' },
 ];
 
@@ -108,6 +114,7 @@ const getIcon = (type: string) => {
     agent: 'smart_toy',
     delay: 'schedule',
     if: 'call_split',
+    merge: 'merge',
     note: 'note',
   };
   return iconMap[type] || 'circle';
@@ -150,7 +157,8 @@ const getNodeDescription = (type: string) => {
     agent: 'Process data with AI',
     delay: 'Wait before continuing',
     if: 'Conditional branching',
-    note: 'Text note (cannot be connected)',
+    merge: 'Merge multiple inputs',
+    note: 'Text note',
   };
   return descriptions[type] || '';
 };

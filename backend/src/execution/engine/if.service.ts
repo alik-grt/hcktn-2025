@@ -39,6 +39,8 @@ export class IfService {
         return { ...input, __ifResult: result };
       }
     }
+    console.log('condition1', condition1);
+    console.log('condition2', condition2);
 
     if (!condition1 && !condition2) {
       this.logger.warn(`If node ${node.id} has no conditions configured, defaulting to else`);

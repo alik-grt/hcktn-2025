@@ -1,6 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Node } from '../../database/entities/node.entity';
 import axios, { AxiosRequestConfig, AxiosResponse } from 'axios';
+import { NonFatalError } from './non-fatal-error';
 
 @Injectable()
 export class HttpService {
@@ -28,7 +29,11 @@ export class HttpService {
       const response: AxiosResponse = await axios(config);
       if (response.status >= 400) {
         this.logger.error(`HTTP request failed with status ${response.status}`);
-        throw new Error(`HTTP request failed with status ${response.status}`);
+        throw new NonFatalError(`HTTP request failed with status ${response.status}`, {
+          status: response.status,
+          body: response.data,
+          headers: response.headers,
+        });
       }
       if (response.data && typeof response.data === 'object' && 'error' in response.data) {
         const errorMessage =
@@ -36,7 +41,11 @@ export class HttpService {
             ? response.data.error
             : JSON.stringify(response.data.error);
         this.logger.error(`HTTP response contains error field: ${errorMessage}`);
-        throw new Error(`HTTP response error: ${errorMessage}`);
+        throw new NonFatalError(`HTTP response error: ${errorMessage}`, {
+          status: response.status,
+          body: response.data,
+          headers: response.headers,
+        });
       }
       return {
         status: response.status,
@@ -45,14 +54,25 @@ export class HttpService {
       };
     } catch (error: any) {
       this.logger.error(`HTTP request failed: ${error.message}`);
+      if (error instanceof NonFatalError) {
+        throw error;
+      }
       if (error.response) {
         const status = error.response.status;
         const statusText = error.response.statusText || 'Unknown';
-        throw new Error(
+        throw new NonFatalError(
           `HTTP request failed with status ${status} ${statusText}: ${error.message}`,
+          {
+            status,
+            body: error.response.data,
+            headers: error.response.headers,
+          },
         );
       }
-      throw new Error(`HTTP request failed: ${error.message}`);
+      throw new NonFatalError(`HTTP request failed: ${error.message}`, {
+        error: error.message,
+        code: error.code,
+      });
     }
   }
 

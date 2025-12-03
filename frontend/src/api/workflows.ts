@@ -27,7 +27,7 @@ export type Workflow = {
 
 export type Node = {
   id: string;
-  type: 'parent' | 'trigger' | 'http' | 'transform' | 'agent' | 'delay' | 'note' | 'if';
+  type: 'parent' | 'trigger' | 'http' | 'transform' | 'agent' | 'delay' | 'note' | 'if' | 'merge';
   subtype?: 'manual' | 'webhook' | 'cron';
   workflowId: string;
   position?: { x: number; y: number };
@@ -42,6 +42,7 @@ export type Node = {
   name?: string;
   status?: 'idle' | 'progress' | 'passed' | 'error';
   parentId?: string;
+  inDevelopment?: boolean;
   createdAt: string;
   updatedAt: string;
 };
@@ -62,7 +63,7 @@ export type CreateWorkflowDto = {
 };
 
 export type CreateNodeDto = {
-  type: 'parent' | 'trigger' | 'http' | 'transform' | 'agent' | 'delay' | 'note' | 'if';
+  type: 'parent' | 'trigger' | 'http' | 'transform' | 'agent' | 'delay' | 'note' | 'if' | 'merge';
   subtype?: 'manual' | 'webhook' | 'cron';
   workflowId: string;
   position?: { x: number; y: number };
@@ -76,6 +77,7 @@ export type CreateNodeDto = {
   template?: Record<string, any>;
   name?: string;
   parentId?: string;
+  inDevelopment?: boolean;
 };
 
 export type CreateEdgeDto = {

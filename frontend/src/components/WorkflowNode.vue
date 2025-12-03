@@ -3,6 +3,7 @@
     :class="[
       getNodeContainerClass(),
       isSelected ? 'node-selected' : '',
+      isInDevelopment ? 'border-error border-2 border-dashed' : '',
     ]"
     @mouseenter="isHovered = true"
     @mouseleave="isHovered = false"
@@ -133,6 +134,12 @@
             class="material-symbols-outlined animate-spin text-info"
           >
             sync
+          </span>
+          <span
+            v-else-if="getNodeStatus() === 'error'"
+            class="material-symbols-outlined text-error"
+          >
+            close
           </span>
           <span
             v-else-if="getNodeStatus() === 'passed'"
@@ -285,6 +292,7 @@ type Props = {
   data: Node;
   selected?: boolean;
   position?: { x: number; y: number };
+  inDevelopment?: boolean;
 };
 
 const props = defineProps<Props>();
@@ -307,7 +315,6 @@ const isEditing = ref(false);
 const isEditingTitle = ref(false);
 const noteText = ref(props.data.config?.text || '');
 const noteTitle = ref(props.data.name || '');
-
 // Common state
 const isHovered = ref(false);
 const showDeleteConfirm = ref(false);
@@ -462,7 +469,11 @@ const getNodeContainerClass = () => {
   } else if (props.data.type === 'parent') {
     return 'parent-node flex flex-col rounded-lg border-2 border-dashed shadow-md border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900/50';
   } else {
-    return `workflow-node flex flex-col rounded-lg border shadow-md ${getNodeStatusClass()}`;
+    const baseClass = `workflow-node flex flex-col rounded-lg border shadow-md ${getNodeStatusClass()}`;
+    if (props.data.inDevelopment) {
+      return `${baseClass} border-error border-2 border-dashed`;
+    }
+    return baseClass;
   }
 };
 
@@ -496,6 +507,7 @@ const getIcon = () => {
     agent: 'smart_toy',
     delay: 'schedule',
     if: 'call_split',
+    merge: 'merge',
   };
   return iconMap[props.data.type] || 'circle';
 };
@@ -508,6 +520,7 @@ const getIconContainerClass = () => {
     agent: 'bg-blue-100 dark:bg-blue-900',
     delay: 'bg-orange-100 dark:bg-orange-900',
     if: 'bg-pink-100 dark:bg-pink-900',
+    merge: 'bg-pink-100 dark:bg-pink-900',
   };
   return `flex h-10 w-10 items-center justify-center rounded-lg ${colorMap[props.data.type] || 'bg-gray-100 dark:bg-gray-800'}`;
 };
@@ -520,9 +533,14 @@ const getIconClass = () => {
     agent: 'text-blue-600 dark:text-blue-300',
     delay: 'text-orange-600 dark:text-orange-300',
     if: 'text-pink-600 dark:text-pink-300',
+    merge: 'text-pink-600 dark:text-pink-300',
   };
   return `material-symbols-outlined ${colorMap[props.data.type] || 'text-gray-600 dark:text-gray-300'}`;
 };
+
+const isInDevelopment = computed(() => {
+  return props.data.type === 'if' || props.data.type === 'merge';
+});
 
 const getNodeTitle = () => {
   if (props.data.type === 'trigger') {
@@ -542,6 +560,8 @@ const getNodeTitle = () => {
     return 'Delay';
   } else if (props.data.type === 'if') {
     return 'If Condition';
+  } else if (props.data.type === 'merge') {
+    return 'Merge';
   }
   return props.data.type;
 };
@@ -564,6 +584,8 @@ const getNodeSubtitle = () => {
     return 'Wait before continuing';
   } else if (props.data.type === 'if') {
     return 'Conditional branching';
+  } else if (props.data.type === 'merge') {
+    return 'Merge multiple inputs';
   }
   return '';
 };
@@ -598,9 +620,12 @@ const getNodeContent = () => {
       return `C2: ${condition2}`;
     }
     return 'Configure conditions';
+  } else if (props.data.type === 'merge') {
+    return 'Merge multiple inputs (in development)';
   }
   return '';
 };
+
 </script>
 
 <style scoped>

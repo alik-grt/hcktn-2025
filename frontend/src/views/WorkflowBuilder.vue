@@ -242,6 +242,7 @@ const nodeTypes = [
   { type: 'agent', label: 'Agent', icon: '🤖' },
   { type: 'delay', label: 'Delay', icon: '⏱️' },
   { type: 'if', label: 'If', icon: '🔀' },
+  { type: 'merge', label: 'Merge', icon: '🔗' },
   { type: 'note', label: 'Note', icon: '📝' },
 ];
 
@@ -311,7 +312,10 @@ const onDrop = async (event: DragEvent) => {
   if (!canvasVueFlowInstance.value) {
     return;
   }
-  const position = canvasVueFlowInstance.value.project({ x: event.clientX, y: event.clientY });
+  const position = canvasVueFlowInstance.value.screenToFlowCoordinate({
+    x: event.clientX,
+    y: event.clientY,
+  });
 
   try {
     const nodeData: any = {
@@ -426,6 +430,7 @@ const onNodeTypeSelect = async (nodeType: string) => {
       nodeData.width = 400;
       nodeData.height = 200;
     }
+
 
     const newNode = await createNode(nodeData);
 
